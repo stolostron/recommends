@@ -17,7 +17,7 @@ setup-dev: ## Configure local environment to use the thanos instance on the dev 
 
 .PHONY: run
 run: ## Run the service locally.
-    go run main.go --v=4
+	go run main.go --v=4
 
 .PHONY: lint
 lint: ## Run lint and gosec tools.
