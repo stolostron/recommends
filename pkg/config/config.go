@@ -19,6 +19,7 @@ type Config struct {
 	KruizeURL string
 }
 
+// Return new Config object instance
 func new() *Config {
 	// If environment variables are set, use default values
 	// Simply put, the order of preference is env -> default values (from left to right)
@@ -72,6 +73,5 @@ func getEnvAsBool(name string, defaultVal bool) bool {
 	if val, err := strconv.ParseBool(valStr); err == nil {
 		return val
 	}
-
 	return defaultVal
 }
