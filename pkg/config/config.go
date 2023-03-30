@@ -16,6 +16,7 @@ var Cfg = new()
 type Config struct {
 	ThanosURL string
 	HttpPort  int
+	KruizeURL string
 }
 
 func new() *Config {
@@ -24,6 +25,7 @@ func new() *Config {
 	conf := &Config{
 		ThanosURL: getEnv("THANOS_SERVER_URL", "https://localhost:5555"),
 		HttpPort:  getEnvAsInt("HTTP_PORT", 4020),
+		KruizeURL: getEnv("KRUIZE_URL", "http://localhost:8080"),
 	}
 	return conf
 }
