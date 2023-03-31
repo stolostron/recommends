@@ -20,6 +20,7 @@ type Config struct {
 	ContextPath string
 }
 
+// Return new Config object instance
 func new() *Config {
 	// If environment variables are set, use default values
 	// Simply put, the order of preference is env -> default values (from left to right)
