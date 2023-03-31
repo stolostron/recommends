@@ -2,6 +2,6 @@ package server
 
 import "testing"
 
-func TestcomputeRecommendations(t *testing.T) {
+func TestComputeRecommendations(t *testing.T) {
 	// Implement after Dev Preview
 }

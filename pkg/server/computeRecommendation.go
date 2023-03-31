@@ -18,11 +18,6 @@ type recommendation []struct {
 	Namespace           string `json:"namespace"`
 	Application         string `json:"application"`
 	MeasurementDuration string `json:"measurement_duration"` //ex: "15min"
-	// ID                  string
-}
-
-var recommendations = recommendation{
-	{ClusterName: "test-cluster", Namespace: "test-namespace", Application: "test-application", MeasurementDuration: "10min"},
 }
 
 // adds an recommendation from JSON received in the request body.
@@ -97,7 +92,11 @@ func computeRecommendations(w http.ResponseWriter, r *http.Request) {
 	//recommendations = append(recommendations, newRecommendation...)
 
 	msg := fmt.Sprintf("Recommendation for clusterID %s successfully submitted.", clusterID)
-	w.Write([]byte(msg))
+	_, err = w.Write([]byte(msg))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	klog.V(4).Info("Received recommendation request")
 }
