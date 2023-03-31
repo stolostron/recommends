@@ -9,7 +9,7 @@ import (
 	"net/http"
 
 	"github.com/golang/gddo/httputil/header"
-	"github.com/google/uuid"
+	"github.com/stolostron/recommends/pkg/helpers"
 	"k8s.io/klog"
 )
 
@@ -68,19 +68,36 @@ func computeRecommendations(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if newRecommendation[0].Application == "" && newRecommendation[0].Namespace == "" {
+	//get the clusterID (cluster name with namespace or applicaiton):
+	clusterID := make(map[string]string) //ex: clustername-namespace:"id-12345"
+	var concat string
+
+	//use namespace:
+	if newRecommendation[0].Application == "" && newRecommendation[0].Namespace != "" {
+		concat = fmt.Sprintf("%s-%s", newRecommendation[0].ClusterName, newRecommendation[0].Namespace)
+	}
+	//use application
+	if newRecommendation[0].Application != "" && newRecommendation[0].Namespace == "" {
+		concat = fmt.Sprintf("%s-%s", newRecommendation[0].ClusterName, newRecommendation[0].Application)
+
+		// if both applications and namespace is empty return
+	} else if newRecommendation[0].Application == "" && newRecommendation[0].Namespace == "" {
 		klog.V(4).Info("Request missing both Application and Namespace. Need at least one to fulfill request.")
 		http.Error(w, "{\"message\":\"Both Application and Namespace cannot be empty.\"}", http.StatusBadRequest)
+		return
 	}
 
-	//concatenate unique id for incoming post clustername value
-	uid := uuid.New()
-	clusterName := fmt.Sprintf("%s-%s", newRecommendation[0].ClusterName, uid.String())
-	newRecommendation[0].ClusterName = clusterName
+	//if id for clusterName already exists then we don't need to generate new oneß
+	if clusterID[concat] == "" {
+		clusterID[concat] = helpers.GenerateID(clusterID)
 
-	//append to recommendations list
-	recommendations = append(recommendations, newRecommendation...)
+	}
+	//TODO: decide if we need this
+	//append to recommendations list temporary store in memory
+	//recommendations = append(recommendations, newRecommendation...)
 
-	klog.Info("Received recommendation request")
-	klog.V(4).Info(recommendations)
+	msg := fmt.Sprintf("Recommendation for clusterID %s successfully submitted.", clusterID)
+	w.Write([]byte(msg))
+
+	klog.V(4).Info("Received recommendation request")
 }
