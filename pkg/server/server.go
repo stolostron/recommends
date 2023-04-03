@@ -4,8 +4,9 @@ import (
 	"crypto/tls"
 	"fmt"
 	"net/http"
-	"recommends/pkg/config"
 	"time"
+
+	"github.com/stolostron/recommends/pkg/config"
 
 	klog "k8s.io/klog/v2"
 
@@ -29,7 +30,7 @@ func StartAndListen() {
 	router := mux.NewRouter()
 	router.HandleFunc("/liveness", livenessProbe).Methods("GET")
 	router.HandleFunc("/readiness", readinessProbe).Methods("GET")
-	router.HandleFunc("/computeRecommendation", readinessProbe).Methods("POST")
+	router.HandleFunc("/computeRecommendation", computeRecommendations).Methods("POST")
 
 	srv := &http.Server{
 		Addr:              fmt.Sprintf(":%d", port),
