@@ -20,6 +20,7 @@ type Config struct {
 	ContextPath string
 }
 
+// Return new Config object instance
 func new() *Config {
 	// If environment variables are set, use default values
 	// Simply put, the order of preference is env -> default values (from left to right)
@@ -69,11 +70,10 @@ func getEnvAsInt(name string, defaultVal int) int {
 }
 
 // Helper to read an environment variable into a bool or return default value
-// func getEnvAsBool(name string, defaultVal bool) bool {
-// 	valStr := getEnv(name, "")
-// 	if val, err := strconv.ParseBool(valStr); err == nil {
-// 		return val
-// 	}
-
-// 	return defaultVal
-// }
+func getEnvAsBool(name string, defaultVal bool) bool {
+	valStr := getEnv(name, "")
+	if val, err := strconv.ParseBool(valStr); err == nil {
+		return val
+	}
+	return defaultVal
+}
