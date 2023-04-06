@@ -28,7 +28,6 @@ func InitPerformanceProfile() bool {
 		klog.Errorf("Cannot create performanceprofile in kruize: %v \n", err)
 		return false
 	}
-	defer res.Body.Close()
 	if res.StatusCode == 201 {
 		klog.Infof("Performance profile created successfully")
 		return true
@@ -45,5 +44,6 @@ func InitPerformanceProfile() bool {
 		return true
 	}
 	klog.Infof("Kruize response code : %v", res.StatusCode)
+	res.Body.Close()
 	return false
 }
