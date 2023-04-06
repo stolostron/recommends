@@ -2,10 +2,11 @@ package main
 
 import (
 	"flag"
-	"recommends/pkg/config"
-	"recommends/pkg/kruize"
-	"recommends/pkg/server"
 	"time"
+
+	"github.com/stolostron/recommends/pkg/config"
+	"github.com/stolostron/recommends/pkg/kruize"
+	"github.com/stolostron/recommends/pkg/server"
 
 	klog "k8s.io/klog/v2"
 )

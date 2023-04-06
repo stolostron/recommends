@@ -14,9 +14,10 @@ var Cfg = new()
 
 // Define a Config type to hold our config properties.
 type Config struct {
-	ThanosURL string
-	HttpPort  int
-	KruizeURL string
+	ThanosURL   string
+	HttpPort    int
+	KruizeURL   string
+	ContextPath string
 }
 
 // Return new Config object instance
@@ -24,9 +25,10 @@ func new() *Config {
 	// If environment variables are set, use default values
 	// Simply put, the order of preference is env -> default values (from left to right)
 	conf := &Config{
-		ThanosURL: getEnv("THANOS_SERVER_URL", "https://localhost:5555"),
-		HttpPort:  getEnvAsInt("HTTP_PORT", 4020),
-		KruizeURL: getEnv("KRUIZE_URL", "http://localhost:8080"),
+		ThanosURL:   getEnv("THANOS_SERVER_URL", "https://localhost:5555"),
+		HttpPort:    getEnvAsInt("HTTP_PORT", 4020),
+		KruizeURL:   getEnv("KRUIZE_URL", "http://localhost:8080"),
+		ContextPath: getEnv("CONTEXT_PATH", "/recommends"),
 	}
 	return conf
 }
@@ -68,10 +70,11 @@ func getEnvAsInt(name string, defaultVal int) int {
 }
 
 // Helper to read an environment variable into a bool or return default value
-func getEnvAsBool(name string, defaultVal bool) bool {
-	valStr := getEnv(name, "")
-	if val, err := strconv.ParseBool(valStr); err == nil {
-		return val
-	}
-	return defaultVal
-}
+// func getEnvAsBool(name string, defaultVal bool) bool {
+// 	valStr := getEnv(name, "")
+// 	if val, err := strconv.ParseBool(valStr); err == nil {
+// 		return val
+// 	}
+
+// 	return defaultVal
+// }

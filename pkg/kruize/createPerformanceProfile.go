@@ -6,7 +6,8 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"recommends/pkg/config"
+
+	"github.com/stolostron/recommends/pkg/config"
 
 	klog "k8s.io/klog/v2"
 )
