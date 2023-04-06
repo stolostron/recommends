@@ -8,20 +8,18 @@ import (
 	"github.com/prometheus/client_golang/api"
 	v1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	"github.com/prometheus/common/model"
+	"k8s.io/klog"
 )
 
-type Result struct { //might not need:
-	Pod          string  `json:"pod"`
-	Container    string  `json:"container"`
-	WorkloadType string  `json:"workload_type"`
-	Workload     string  `json:"workload"`
-	Value        float64 `json:"value"`
+type Result struct {
+	// Pod       string `json:"pod"`
+	Container string `json:"container"`
+	Workload  string `json:"workload"`
 }
 
 var DepCon map[string][]string
 
 func PrometheusClient() {
-	// Create a new Prometheus API client.
 	client, err := api.NewClient(api.Config{
 		Address: "http://localhost:5555",
 	})
@@ -36,33 +34,32 @@ func PrometheusClient() {
 		node_namespace_pod_container:container_cpu_usage_seconds_total:sum_rate{cluster="local-cluster", namespace="open-cluster-management-observability"}
 	  * on(namespace,pod)
 		group_left( workload_type, workload) namespace_workload_pod:kube_pod_owner:relabel{cluster="local-cluster", namespace="open-cluster-management-observability", workload_type="deployment"}
-	) by (pod,container,workload_type, workload)`
+	) by (pod, container, workload)` //do we need pod ?
 
 	res, _, err := v1api.Query(context.Background(), query, time.Now())
 	if err != nil {
 		panic(err)
 	}
-	var results []Result
+	deploymentContainers := make(map[string][]string)
 
 	vector := res.(model.Vector)
 	for _, sample := range vector {
-		fmt.Printf("Name: %s, Labels: %v,", sample.Metric["__name__"], sample.Metric)
+		klog.V(5).Info("Name: %s, Labels: %v,\n", sample.Metric["__name__"], sample.Metric)
 		labels := sample.Metric
+		// pod := labels["pod"]
 		container := labels["container"]
-		pod := labels["pod"]
-		workloadType := labels["workload_type"]
 		workload := labels["workload"]
 
 		r := Result{
-			Pod:          string(pod),
-			Container:    string(container),
-			WorkloadType: string(workloadType),
-			Workload:     string(workload),
+			// Pod:          string(pod),
+			Container: string(container),
+			Workload:  string(workload),
 		}
 
-		results = append(results, r)
+		if _, ok := deploymentContainers[r.Workload]; !ok {
+			deploymentContainers[r.Workload] = make([]string, 0)
+		}
+		deploymentContainers[r.Workload] = append(deploymentContainers[r.Workload], r.Container)
 	}
-
-	fmt.Println(results)
 
 }

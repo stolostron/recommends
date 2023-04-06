@@ -42,6 +42,6 @@ func main() {
 		}
 
 	}
-
+	server.PrometheusClient()
 	server.StartAndListen()
 }
