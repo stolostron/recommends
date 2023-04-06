@@ -4,22 +4,27 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
-	"net/http"
 	"os"
+
+	"github.com/stolostron/recommends/pkg/utils"
 
 	"github.com/stolostron/recommends/pkg/config"
 
 	klog "k8s.io/klog/v2"
 )
 
+var create_performance_profile_url = config.Cfg.KruizeURL + "/createPerformanceProfile"
+
 func InitPerformanceProfile() bool {
-	create_performance_profile_url := config.Cfg.KruizeURL + "/createPerformanceProfile"
+
 	postBody, err := os.ReadFile("./pkg/kruize/resource_optimization_openshift.json")
 	if err != nil {
 		klog.Errorf("Error reading resource_optimization_openshift.json: %v \n", err)
 		return false
 	}
-	res, err := http.Post(create_performance_profile_url, "application/json", bytes.NewBuffer(postBody))
+	client := utils.HTTPClient()
+	res, err := client.Post(create_performance_profile_url, "application/json", bytes.NewBuffer(postBody))
+	defer res.Body.Close()
 	if err != nil {
 		klog.Errorf("Cannot create performanceprofile in kruize: %v \n", err)
 		return false
@@ -28,7 +33,6 @@ func InitPerformanceProfile() bool {
 		klog.Infof("Performance profile created successfully")
 		return true
 	}
-	defer res.Body.Close()
 	bodyBytes, _ := io.ReadAll(res.Body)
 	data := map[string]interface{}{}
 	if err := json.Unmarshal(bodyBytes, &data); err != nil {
