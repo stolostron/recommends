@@ -44,6 +44,10 @@ func InitPerformanceProfile() bool {
 		return true
 	}
 	klog.Infof("Kruize response code : %v", res.StatusCode)
-	res.Body.Close()
+	err = res.Body.Close()
+	if err != nil {
+		klog.Errorf("Cannot close response body: %v \n", err)
+		return false
+	}
 	return false
 }
