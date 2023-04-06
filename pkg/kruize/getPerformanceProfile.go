@@ -2,7 +2,7 @@ package kruize
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -48,29 +48,29 @@ func replaceTemplate(query string, clusterName string, namespace string,
 	return query
 }
 
-func getPerformanceProfile(profile_name string) (model.Perf_profile, bool) {
+func getPerformanceProfile(profileName string) (model.Perf_profile, bool) {
 	var result model.Perf_profile
-	default_profile := "./pkg/kruize/resource_optimization_openshift.json"
-	if profile_name == "" {
-		profile_name = default_profile
+	defaultProfile := "./pkg/kruize/resource_optimization_openshift.json"
+	if profileName == "" {
+		profileName = defaultProfile
 	} else {
-		profile_name = "./pkg/kruize/" + profile_name + ".json"
+		profileName = "./pkg/kruize/" + profileName + ".json"
 	}
-	json_file, err := os.Open(filepath.Clean(profile_name))
+	json_file, err := os.Open(filepath.Clean(profileName))
 
 	if err != nil {
-		klog.Errorf("Error reading file %s : %v \n", profile_name, err)
+		klog.Errorf("Error reading file %s : %v \n", profileName, err)
 	}
-	byteArray, err := ioutil.ReadAll(json_file)
+	byteArray, err := io.ReadAll(json_file)
 
 	if err != nil {
-		klog.Errorf("Error reading performance profile %s : %v \n", profile_name, err)
+		klog.Errorf("Error reading performance profile %s : %v \n", profileName, err)
 		return result, false
 	}
 	err = json.Unmarshal(byteArray, &result)
 
 	if err != nil {
-		klog.Errorf("Error reading performance profile %s : %v \n", profile_name, err)
+		klog.Errorf("Error reading performance profile %s : %v \n", profileName, err)
 		return result, false
 	}
 	klog.Info(len(result.Slo.Function_variables))
