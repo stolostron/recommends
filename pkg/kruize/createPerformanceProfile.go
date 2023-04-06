@@ -24,11 +24,11 @@ func InitPerformanceProfile() bool {
 	}
 	client := utils.HTTPClient()
 	res, err := client.Post(create_performance_profile_url, "application/json", bytes.NewBuffer(postBody))
-	defer res.Body.Close()
 	if err != nil {
 		klog.Errorf("Cannot create performanceprofile in kruize: %v \n", err)
 		return false
 	}
+	defer res.Body.Close()
 	if res.StatusCode == 201 {
 		klog.Infof("Performance profile created successfully")
 		return true
