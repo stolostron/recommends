@@ -21,7 +21,7 @@ type recommendation []struct {
 }
 
 // adds an recommendation from JSON received in the request body.
-func computeRecommendations(w http.ResponseWriter, r *http.Request) {
+func ComputeRecommendations(w http.ResponseWriter, r *http.Request) {
 
 	if r.Header.Get("Content-Type") != "" {
 		value, _ := header.ParseValueAndParams(r.Header, "Content-Type")
