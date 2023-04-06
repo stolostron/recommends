@@ -5,8 +5,9 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"recommends/pkg/model"
 	"strings"
+
+	"github.com/stolostron/recommends/pkg/model"
 
 	klog "k8s.io/klog/v2"
 )
