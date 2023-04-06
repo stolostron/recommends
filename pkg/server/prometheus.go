@@ -19,7 +19,7 @@ type Result struct {
 
 var DepCon map[string][]string
 
-func PrometheusClient() {
+func GetLabels() {
 	client, err := api.NewClient(api.Config{
 		Address: "http://localhost:5555",
 	})
