@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"recommends/pkg/model"
 	"strings"
 
@@ -54,7 +55,7 @@ func getPerformanceProfile(profile_name string) (model.Perf_profile, bool) {
 	} else {
 		profile_name = "./pkg/kruize/" + profile_name + ".json"
 	}
-	json_file, err := os.Open(profile_name)
+	json_file, err := os.Open(filepath.Clean(profile_name))
 
 	if err != nil {
 		klog.Errorf("Error reading file %s : %v \n", profile_name, err)
