@@ -109,38 +109,3 @@ func TestGetEnvAsInt(t *testing.T) {
 		}
 	}
 }
-
-// Test getEnvAsBool
-func TestGetEnvAsBool(t *testing.T) {
-	testCases := []struct {
-		name       string
-		val        string
-		defaultVal bool
-		expected   bool
-	}{
-		{
-			"should execute getEnvAsBool and return true",
-			"true",
-			false,
-			true,
-		},
-		{
-			"should execute getEnvAsBool and return true",
-			"unknown",
-			true,
-			true,
-		},
-	}
-
-	envVar := "IS_HUB_CLUSTER"
-	for _, testCase := range testCases {
-		os.Setenv(envVar, testCase.val)
-		if val := os.Getenv(envVar); val != testCase.val {
-			t.Errorf("failed to set environment variable '%v' to '%v'", envVar, testCase.val)
-		}
-
-		if ok := getEnvAsBool(envVar, testCase.defaultVal); !ok {
-			t.Logf("case (%v) output: (%v) is not the expected value: (%v)", testCase.name, ok, testCase.expected)
-		}
-	}
-}

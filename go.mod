@@ -1,10 +1,10 @@
 module github.com/stolostron/recommends
 
-go 1.18
+go 1.20
 
 require (
 	github.com/gorilla/mux v1.8.0
-	github.com/prometheus/common v0.37.0
+	github.com/prometheus/common v0.42.0
 	k8s.io/klog/v2 v2.90.1
 )
 
@@ -16,7 +16,7 @@ require (
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/stretchr/testify v1.8.1 // indirect
 	golang.org/x/net v0.8.0 // indirect
-	golang.org/x/oauth2 v0.4.0 // indirect
+	golang.org/x/oauth2 v0.5.0 // indirect
 )
 
 require (
