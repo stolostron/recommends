@@ -8,7 +8,6 @@ import (
 	"github.com/prometheus/client_golang/api"
 	v1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	"github.com/prometheus/common/model"
-	"k8s.io/klog"
 )
 
 type Result struct {
@@ -44,7 +43,6 @@ func GetLabels() {
 
 	vector := res.(model.Vector)
 	for _, sample := range vector {
-		klog.V(5).Info("Name: %s, Labels: %v,\n", sample.Metric["__name__"], sample.Metric)
 		labels := sample.Metric
 		// pod := labels["pod"]
 		container := labels["container"]
