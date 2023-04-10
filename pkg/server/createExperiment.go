@@ -2,36 +2,43 @@ package server
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
-	"net/http"
+	"io"
 	"strings"
 
+	"github.com/stolostron/recommends/pkg/config"
 	"github.com/stolostron/recommends/pkg/helpers"
+	"github.com/stolostron/recommends/pkg/utils"
+	"k8s.io/klog"
 )
 
-//reads in the values from computeRecommendations and passes them to request to createExperiment kruize
+//reads in the values from computeRecommendations and prometheus
+//and passes them as request to createExperiment kruize
 
-type RequestBody struct {
+var create_experiment_url = config.Cfg.KruizeURL + "/createExperiment"
+
+type CreateExperiment struct {
 	Version                string             `json:"version"`
 	ExperimentName         string             `json:"experiment_name"`
 	ClusterName            string             `json:"cluster_name"`
 	PerformanceProfile     string             `json:"performace_profile"`
 	Mode                   string             `json:"mode"`
 	TargetCluster          string             `json:"target_cluster"`
-	KubernetesObjects      []KubernetesObject `json:"kubernetes_objects"` //this should be a list of deployments map[string][]string
+	KubernetesObjects      []KubernetesObject `json:"kubernetes_objects"`
 	TrialSettings          TrialSettings
 	RecommendationSettings RecommendationSettings
 }
 
-type KubernetesObject struct { //these are the values in the deployment
+type KubernetesObject struct {
 	Type       string      `json:"type"`
 	Name       string      `json:"name"`
 	Namespace  string      `json:"namespace"`
 	Containers []Container `json:"containers"`
 }
 
-type Container struct { //these are the container values within the deployments (above)
+type Container struct {
 	ContainerImage string `json:"container_image_name"`
 	ContainerName  string `json:"container_name"`
 }
@@ -44,40 +51,38 @@ type RecommendationSettings struct {
 	Threshold string `json:"threshold"`
 }
 
-func LoadValues(clusterID map[string]string, deployments map[string][]string) {
+func LoadValues(clusterID map[string]string, deployments map[string][]string, context context.Context) {
 
-	var responseBody RequestBody
+	var reqBody CreateExperiment
 	var kubeObj KubernetesObject
 	var conObj Container
 	var containerDataClean []string
 
 	// parse the clusterID
 	for name, id := range clusterID {
-		responseBody.ExperimentName = fmt.Sprint(name + "-" + id)
+		reqBody.ExperimentName = fmt.Sprint(name + "-" + id)
 		parts := strings.Split(name, "_")
-		responseBody.ClusterName = parts[0]
+		reqBody.ClusterName = parts[0]
 		kubeObj.Namespace = parts[1]
 
 	}
 	//parse deployment data
 	for deployment, containerData := range deployments {
 		containerDataClean = helpers.RemoveDuplicate(containerData)
-		fmt.Println("After Clean: ", deployment, containerDataClean)
 		kubeObj.Name = deployment
 		for _, contData := range containerDataClean {
 			conObj = Container{ContainerImage: "", ContainerName: contData}
 		}
 
 	}
-
 	//create createExperiement object TODO: make hard coded values env variables
-	requestBody := RequestBody{
+	requestBody := CreateExperiment{
 		Version:            "v1",
-		ExperimentName:     responseBody.ExperimentName,
-		ClusterName:        responseBody.ClusterName,
-		PerformanceProfile: responseBody.PerformanceProfile,
-		Mode:               responseBody.Mode,
-		TargetCluster:      responseBody.TargetCluster,
+		ExperimentName:     reqBody.ExperimentName,
+		ClusterName:        reqBody.ClusterName,
+		PerformanceProfile: "resource_optimization_openshift",
+		Mode:               "monitor",
+		TargetCluster:      "local",
 		KubernetesObjects: []KubernetesObject{
 			{
 				Type:      "deployment",
@@ -85,7 +90,7 @@ func LoadValues(clusterID map[string]string, deployments map[string][]string) {
 				Namespace: kubeObj.Namespace,
 				Containers: []Container{
 					{
-						ContainerImage: conObj.ContainerImage,
+						ContainerImage: "kruize/tfb-db:1.15",
 						ContainerName:  conObj.ContainerName,
 					},
 				},
@@ -98,32 +103,35 @@ func LoadValues(clusterID map[string]string, deployments map[string][]string) {
 			Threshold: "0.1",
 		},
 	}
+	requestBodies := []CreateExperiment{requestBody}
 
-	requestBodyJSON, err := json.Marshal(requestBody)
+	//post createExperiment request to kruize
+	requestBodyJSON, err := json.Marshal(requestBodies)
 	if err != nil {
 		fmt.Println("Error encoding JSON:", err)
 		return
 	}
-
-	req, err := http.NewRequest("POST", "https://localhost:8080/createExperiment", bytes.NewBuffer(requestBodyJSON))
+	klog.V(5).Info("%+v\n", requestBody)
+	client := utils.HTTPClient()
+	res, err := client.Post(create_experiment_url, "application/json", bytes.NewBuffer(requestBodyJSON))
 	if err != nil {
-		fmt.Println("Error creating request:", err)
+		klog.Errorf("Cannot create createExperiment with context %s in kruize: %v \n", context, err)
+		klog.Info(res)
 		return
 	}
-	req.Header.Set("Content-Type", "application/json")
-
-	// send the request and process the response
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		fmt.Println("Error sending request:", err)
+	if res.StatusCode == 201 {
+		klog.Infof("CreateExperiment profile created successfully")
 		return
 	}
-	defer resp.Body.Close()
+	bodyBytes, _ := io.ReadAll(res.Body)
+	data := map[string]interface{}{}
+	if err := json.Unmarshal(bodyBytes, &data); err != nil {
+		klog.Errorf("Cannot unmarshal response data: %v", err)
+		return
+	}
 }
 
 // sample of createExperiment:
-
 // [{
 // 	"version": "1.0",
 // 	"experiment_name": "quarkus-resteasy-autotune-min-http-response-time-db-new-1",
@@ -154,5 +162,4 @@ func LoadValues(clusterID map[string]string, deployments map[string][]string) {
 // 	"recommendation_settings": {
 // 	  "threshold": "0.1"
 // 	}
-
 //   }]
