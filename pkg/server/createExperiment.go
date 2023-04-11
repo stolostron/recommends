@@ -111,7 +111,6 @@ func LoadValues(clusterID map[string]string, deployments map[string][]string, co
 		fmt.Println("Error encoding JSON:", err)
 		return
 	}
-	klog.V(5).Info("%+v\n", requestBody)
 	client := utils.HTTPClient()
 	res, err := client.Post(create_experiment_url, "application/json", bytes.NewBuffer(requestBodyJSON))
 	if err != nil {

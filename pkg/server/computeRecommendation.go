@@ -21,12 +21,6 @@ type recommendation []struct {
 	MeasurementDuration string `json:"measurement_duration"` //ex: "15min"
 }
 
-type result struct {
-	// Pod       string `json:"pod"`
-	Container string `json:"container"`
-	Workload  string `json:"workload"`
-}
-
 // adds an recommendation from JSON received in the request body.
 func computeRecommendations(w http.ResponseWriter, r *http.Request) {
 
