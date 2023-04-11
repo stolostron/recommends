@@ -21,15 +21,17 @@ type recommendation []struct {
 	MeasurementDuration string `json:"measurement_duration"` //ex: "15min"
 }
 
-// adds an recommendation from JSON received in the request body.
+// prepares recommendation request
 func computeRecommendations(w http.ResponseWriter, r *http.Request) {
 
 	var newRecommendation recommendation
-	//get the clusterID (cluster name with namespace or applicaiton):
 	clusterID := make(map[string]string) //ex: clustername-namespace:"id-12345"
 	var concat string
+
+	//create context from request
 	context := r.Context()
 
+	//check content type is json
 	if r.Header.Get("Content-Type") != "" {
 		value, _ := header.ParseValueAndParams(r.Header, "Content-Type")
 		if value != "application/json" {
@@ -40,11 +42,9 @@ func computeRecommendations(w http.ResponseWriter, r *http.Request) {
 	}
 
 	dec := json.NewDecoder(r.Body)
-	dec.DisallowUnknownFields()
-
 	err := dec.Decode(&newRecommendation)
 
-	//error handling:
+	//error handling for decoding request body:
 	if err != nil {
 		var unmarshalTypeError *json.UnmarshalTypeError
 		var syntaxError *json.SyntaxError
@@ -68,6 +68,7 @@ func computeRecommendations(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	//get the clusterID (cluster name with namespace or applicaiton):
 	//use namespace:
 	if newRecommendation[0].Application == "" && newRecommendation[0].Namespace != "" {
 		concat = fmt.Sprintf("%s_%s", newRecommendation[0].ClusterName, newRecommendation[0].Namespace)
@@ -98,12 +99,16 @@ func computeRecommendations(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	//get the deployments and containers:
-	deployments := prometheus.GetLabels(context)
-
-	//createExperiment with data:
-	LoadValues(clusterID, deployments, context)
-
 	klog.V(4).Info("Received recommendation request")
 
+	//get the deployments and containers:
+	deployments, err := prometheus.GetLabels(context)
+
+	//createExperiment with data:
+	if err == nil {
+		LoadValues(clusterID, deployments, context)
+	} else {
+		klog.Errorf("Error getting deployment and container labels from prometheus: %s", err)
+		return
+	}
 }

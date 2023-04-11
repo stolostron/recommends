@@ -6,7 +6,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
 	"strings"
+	"time"
 
 	"github.com/stolostron/recommends/pkg/config"
 	"github.com/stolostron/recommends/pkg/helpers"
@@ -105,60 +107,37 @@ func LoadValues(clusterID map[string]string, deployments map[string][]string, co
 	}
 	requestBodies := []CreateExperiment{requestBody}
 
+	createExperiment(requestBodies, context)
+
+}
+
+func createExperiment(requestBodies []CreateExperiment, context context.Context) {
 	//post createExperiment request to kruize
 	requestBodyJSON, err := json.Marshal(requestBodies)
 	if err != nil {
-		fmt.Println("Error encoding JSON:", err)
+		klog.Error("Error encoding JSON:", err)
 		return
 	}
 	client := utils.HTTPClient()
+
+	// if post request fails retry with max wait time 30 sec
+	retry := 0
 	res, err := client.Post(create_experiment_url, "application/json", bytes.NewBuffer(requestBodyJSON))
 	if err != nil {
-		klog.Errorf("Cannot create createExperiment with context %s in kruize: %v \n", context, err)
-		klog.Info(res)
-		return
+		// Max wait time is 30 sec
+		waitMS := int(math.Min(float64(retry*500), float64(300000/10)))
+		timeToSleep := time.Duration(waitMS) * time.Millisecond
+		retry++
+		klog.Errorf("Cannot create createExperiment in kruize: %v \n", err)
+		time.Sleep(timeToSleep)
 	}
 	if res.StatusCode == 201 {
 		klog.Infof("CreateExperiment profile created successfully")
-		return
 	}
 	bodyBytes, _ := io.ReadAll(res.Body)
 	data := map[string]interface{}{}
 	if err := json.Unmarshal(bodyBytes, &data); err != nil {
 		klog.Errorf("Cannot unmarshal response data: %v", err)
-		return
 	}
+	return
 }
-
-// sample of createExperiment:
-// [{
-// 	"version": "1.0",
-// 	"experiment_name": "quarkus-resteasy-autotune-min-http-response-time-db-new-1",
-// 	"cluster_name": "cluster-one-division-bell",
-// 	"performance_profile": "resource-optimization-openshift",
-// 	"mode": "monitor",
-// 	"target_cluster": "local",
-// 	"kubernetes_objects": [
-// 	  {
-// 		"type": "deployment",
-// 		"name": "tfb-qrh-deployment",
-// 		"namespace": "default",
-// 		"containers": [
-// 		  {
-// 			"container_image_name": "kruize/tfb-db:1.15",
-// 			"container_name": "tfb-server-0"
-// 		  },
-// 		  {
-// 			"container_image_name": "kruize/tfb-qrh:1.13.2.F_et17",
-// 			"container_name": "tfb-server-1"
-// 		  }
-// 		]
-// 	  }
-// 	],
-// 	"trial_settings": {
-// 	  "measurement_duration": "15min"
-// 	},
-// 	"recommendation_settings": {
-// 	  "threshold": "0.1"
-// 	}
-//   }]

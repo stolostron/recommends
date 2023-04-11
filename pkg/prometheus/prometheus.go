@@ -2,6 +2,7 @@ package prometheus
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -16,7 +17,11 @@ type Result struct {
 	Workload  string `json:"workload"`
 }
 
-func GetLabels(context context.Context) map[string][]string {
+func GetLabels(ctx context.Context) (map[string][]string, error) {
+
+	//set a timeout for the context to avoid blocking
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
 
 	deploymentContainers := make(map[string][]string)
 
@@ -24,8 +29,7 @@ func GetLabels(context context.Context) map[string][]string {
 		Address: "http://localhost:5555",
 	})
 	if err != nil {
-		fmt.Printf("Error creating client: %v\n", err)
-		return nil
+		return nil, fmt.Errorf("Error creating client: %v. Please ensure that the API server is running and the address is correct", err)
 	}
 
 	v1api := v1.NewAPI(client)
@@ -36,27 +40,35 @@ func GetLabels(context context.Context) map[string][]string {
 		group_left( workload_type, workload) namespace_workload_pod:kube_pod_owner:relabel{cluster="local-cluster", namespace="open-cluster-management-observability", workload_type="deployment"}
 	) by (container,workload)`
 
-	res, _, err := v1api.Query(context, query, time.Now())
+	res, _, err := v1api.Query(ctx, query, time.Now())
 	if err != nil {
-		panic(err)
+		if errors.Is(err, context.DeadlineExceeded) {
+			return nil, fmt.Errorf("API query timed out: %v", err)
+		}
+		return nil, fmt.Errorf("API query failed: %v", err)
 	}
 
 	vector := res.(model.Vector)
 	for _, sample := range vector {
-		klog.Infof("Name: %s, Labels: %s", sample.Metric["__name__"], sample.Metric)
-		labels := sample.Metric
-		container := labels["container"]
-		workload := labels["workload"]
+		if sample.Metric != nil {
+			klog.V(4).Infof("Name: %s, Labels: %s", sample.Metric["__name__"], sample.Metric)
+			labels := sample.Metric
+			container := labels["container"]
+			workload := labels["workload"]
 
-		r := Result{
-			Container: string(container),
-			Workload:  string(workload),
-		}
+			r := Result{
+				Container: string(container),
+				Workload:  string(workload),
+			}
 
-		if _, ok := deploymentContainers[r.Workload]; !ok {
-			deploymentContainers[r.Workload] = make([]string, 0)
+			if _, ok := deploymentContainers[r.Workload]; !ok {
+				deploymentContainers[r.Workload] = make([]string, 0)
+			}
+			deploymentContainers[r.Workload] = append(deploymentContainers[r.Workload], r.Container)
+		} else {
+			return nil, fmt.Errorf("Metric results are empty. Please ensure query is correct and returns required labels: %s.", query)
+
 		}
-		deploymentContainers[r.Workload] = append(deploymentContainers[r.Workload], r.Container)
 	}
-	return deploymentContainers
+	return deploymentContainers, nil
 }
