@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"math"
 	"strings"
 	"time"
 
@@ -112,6 +111,7 @@ func LoadValues(clusterID map[string]string, deployments map[string][]string, co
 }
 
 func createExperiment(requestBodies []CreateExperiment, context context.Context) {
+
 	//post createExperiment request to kruize
 	requestBodyJSON, err := json.Marshal(requestBodies)
 	if err != nil {
@@ -119,25 +119,24 @@ func createExperiment(requestBodies []CreateExperiment, context context.Context)
 		return
 	}
 	client := utils.HTTPClient()
-
 	// if post request fails retry with max wait time 30 sec
 	retry := 0
-	res, err := client.Post(create_experiment_url, "application/json", bytes.NewBuffer(requestBodyJSON))
-	if err != nil {
-		// Max wait time is 30 sec
-		waitMS := int(math.Min(float64(retry*500), float64(300000/10)))
-		timeToSleep := time.Duration(waitMS) * time.Millisecond
-		retry++
-		klog.Errorf("Cannot create createExperiment in kruize: %v \n", err)
-		time.Sleep(timeToSleep)
+	for {
+		res, err := client.Post(create_experiment_url, "application/json", bytes.NewBuffer(requestBodyJSON))
+		if err != nil {
+			// Max wait time is 30 sec
+			timeToSleep := 30 * time.Second
+			retry++
+			klog.Errorf("Cannot create createExperiment in kruize: %v. Will retry in %s\n", err, timeToSleep)
+			time.Sleep(timeToSleep) //wait 30 seconds
+		} else if res.StatusCode == 201 {
+			klog.Infof("CreateExperiment profile created successfully")
+			bodyBytes, _ := io.ReadAll(res.Body)
+			data := map[string]interface{}{}
+			if err := json.Unmarshal(bodyBytes, &data); err != nil {
+				klog.Errorf("Cannot unmarshal response data: %v", err)
+			}
+		}
 	}
-	if res.StatusCode == 201 {
-		klog.Infof("CreateExperiment profile created successfully")
-	}
-	bodyBytes, _ := io.ReadAll(res.Body)
-	data := map[string]interface{}{}
-	if err := json.Unmarshal(bodyBytes, &data); err != nil {
-		klog.Errorf("Cannot unmarshal response data: %v", err)
-	}
-	return
+
 }
