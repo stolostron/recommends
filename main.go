@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"time"
 
 	"github.com/stolostron/recommends/pkg/config"
 	"github.com/stolostron/recommends/pkg/kruize"
@@ -27,20 +28,20 @@ func main() {
 	}
 
 	// Load PerformanceProfile in Kruize Instance first
-	// perfProfileInitialized := false
-	// for !perfProfileInitialized {
-	// 	klog.Info("Initializing performanceProfile.")
-	// 	perfProfileInitialized = kruize.InitPerformanceProfile()
-	// 	if perfProfileInitialized {
-	// 		klog.Info("Initialized performanceProfile.")
-	// 		break
-	// 	} else {
-	// 		klog.Info("Retry performanceProfile Initializing.")
-	// 		klog.V(9).Infof("May be kruize is taking long to start ... Retry after 1 second")
-	// 		time.Sleep(1 * time.Second)
-	// 	}
+	perfProfileInitialized := false
+	for !perfProfileInitialized {
+		klog.Info("Initializing performanceProfile.")
+		perfProfileInitialized = kruize.InitPerformanceProfile()
+		if perfProfileInitialized {
+			klog.Info("Initialized performanceProfile.")
+			break
+		} else {
+			klog.Info("Retry performanceProfile Initializing.")
+			klog.V(9).Infof("May be kruize is taking long to start ... Retry after 1 second")
+			time.Sleep(1 * time.Second)
+		}
 
-	// }
+	}
 	pm := kruize.NewProfileManager("")
 	pm.GetPerformanceProfileInstance("x-man1", "ocm", "search-postgres", "search-postgres-container")
 	server.StartAndListen()
