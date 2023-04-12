@@ -102,7 +102,7 @@ func computeRecommendations(w http.ResponseWriter, r *http.Request) {
 	klog.V(4).Info("Received recommendation request")
 
 	//get the deployments and containers:
-	deployments, err := prometheus.GetLabels(context)
+	deployments, err := prometheus.GetLabels()
 
 	//createExperiment with data:
 	if err == nil {

@@ -17,9 +17,9 @@ type Result struct {
 	Workload  string `json:"workload"`
 }
 
-func GetLabels(ctx context.Context) (map[string][]string, error) {
+func GetLabels() (map[string][]string, error) {
 
-	//set a timeout for the context to avoid blocking
+	//setup context with a timeout to avoid blocking
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 
