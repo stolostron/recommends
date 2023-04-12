@@ -56,8 +56,11 @@ func LoadValues(clusterID map[string]string, deployments map[string][]string, co
 
 	var reqBody CreateExperiment
 	var kubeObj KubernetesObject
-	var conObj Container
 	var containerDataClean []string
+	var requestBody CreateExperiment
+	var requestBodies []CreateExperiment
+
+	containerMap := make(map[string][]Container)
 
 	// parse the clusterID
 	for name, id := range clusterID {
@@ -67,47 +70,45 @@ func LoadValues(clusterID map[string]string, deployments map[string][]string, co
 		kubeObj.Namespace = parts[1]
 
 	}
-	//parse deployment data
+
+	//get containers
 	for deployment, containerData := range deployments {
 		containerDataClean = helpers.RemoveDuplicate(containerData)
-		kubeObj.Name = deployment
 		for _, contData := range containerDataClean {
-			conObj = Container{ContainerImage: "", ContainerName: contData}
+			containerMap[deployment] = append(containerMap[deployment], Container{ContainerName: contData})
 		}
-
 	}
-	//create createExperiement object TODO: make hard coded values env variables
-	requestBody := CreateExperiment{
-		Version:            "v1",
-		ExperimentName:     reqBody.ExperimentName,
-		ClusterName:        reqBody.ClusterName,
-		PerformanceProfile: "resource_optimization_openshift",
-		Mode:               "monitor",
-		TargetCluster:      "local",
-		KubernetesObjects: []KubernetesObject{
-			{
-				Type:      "deployment",
-				Name:      kubeObj.Name,
-				Namespace: kubeObj.Namespace,
-				Containers: []Container{
-					{
-						ContainerImage: "kruize/tfb-db:1.15",
-						ContainerName:  conObj.ContainerName,
-					},
+
+	for deployment, container := range containerMap {
+
+		//parse deployment data
+		requestBody = CreateExperiment{
+			Version:            "v1",
+			ExperimentName:     reqBody.ExperimentName,
+			ClusterName:        reqBody.ClusterName,
+			PerformanceProfile: "resource_optimization_openshift",
+			Mode:               "monitor",
+			TargetCluster:      "local",
+			KubernetesObjects: []KubernetesObject{
+				{
+					Type:       "deployment",
+					Name:       deployment,
+					Namespace:  kubeObj.Namespace,
+					Containers: container,
 				},
 			},
-		},
-		TrialSettings: TrialSettings{
-			MeasurementDuration: "15min",
-		},
-		RecommendationSettings: RecommendationSettings{
-			Threshold: "0.1",
-		},
+			TrialSettings: TrialSettings{
+				MeasurementDuration: "15min",
+			},
+			RecommendationSettings: RecommendationSettings{
+				Threshold: "0.1",
+			},
+		}
+		requestBodies = append(requestBodies, requestBody)
+
 	}
-	requestBodies := []CreateExperiment{requestBody}
 
 	createExperiment(requestBodies, context)
-
 }
 
 func createExperiment(requestBodies []CreateExperiment, context context.Context) {
