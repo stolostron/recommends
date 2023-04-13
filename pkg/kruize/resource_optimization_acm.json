@@ -1,0 +1,170 @@
+{
+    "name": "resource-optimization-acm",
+    "profile_version": 1,
+    "k8s_type": "openshift",
+    "slo": {
+        "slo_class": "resource_usage",
+        "direction": "minimize",
+        "objective_function": {
+            "function_type": "source"
+        },
+        "function_variables": [
+            {
+                "name": "cpuRequest",
+                "datasource": "prometheus",
+                "value_type": "double",
+                "kubernetes_object": "container",
+                "aggregation_functions": [
+                    {
+                        "function": "avg",
+                        "query": "avg(kube_pod_container_resource_requests{cluster=\"$CLUSTER_NAME$\",namespace=\"$NAMESPACE$\",pod=~\"$WORKLOAD_NAME$-[^-]*-[^-]*\",container=\"$CONTAINER_NAME$\"})"
+                    },
+                    {
+                        "function": "sum",
+                        "query": "sum(kube_pod_container_resource_requests{cluster=\"$CLUSTER_NAME$\",namespace=\"$NAMESPACE$\",pod=~\"$WORKLOAD_NAME$-[^-]*-[^-]*\",container=\"$CONTAINER_NAME$\"})"
+                    }
+                ]
+            },
+            {
+                "name": "cpuLimit",
+                "datasource": "prometheus",
+                "value_type": "double",
+                "kubernetes_object": "container",
+                "aggregation_functions": [
+                    {
+                        "function": "avg",
+                        "query": "avg(kube_pod_container_resource_limits{cluster=\"$CLUSTER_NAME$\",namespace=\"$NAMESPACE$\",pod=~\"$WORKLOAD_NAME$-[^-]*-[^-]*\",container=\"$CONTAINER_NAME$\"})"
+                    },
+                    {
+                        "function": "sum",
+                        "query": "sum(kube_pod_container_resource_limits{cluster=\"$CLUSTER_NAME$\",namespace=\"$NAMESPACE$\",pod=~\"$WORKLOAD_NAME$-[^-]*-[^-]*\",container=\"$CONTAINER_NAME$\"})"
+                    }
+                ]
+            },
+            {
+                "name": "cpuUsage",
+                "datasource": "prometheus",
+                "value_type": "double",
+                "kubernetes_object": "container",
+                "aggregation_functions": [
+                    {
+                        "function": "avg",
+                        "query": "avg(avg_over_time(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_rate{cluster=\"$CLUSTER_NAME$\",namespace=\"$NAMESPACE$\",pod=~\"$WORKLOAD_NAME$-[^-]*-[^-]*\",container=\"$CONTAINER_NAME$\"}[$MEASUREMENT_DURATION$]))"
+                    },
+                    {
+                        "function": "min",
+                        "query": "min(min_over_time(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_rate{cluster=\"$CLUSTER_NAME$\",namespace=\"$NAMESPACE$\",pod=~\"$WORKLOAD_NAME$-[^-]*-[^-]*\",container=\"$CONTAINER_NAME$\"}[$MEASUREMENT_DURATION$]))"
+                    },
+                    {
+                        "function": "max",
+                        "query": "max(max_over_time(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_rate{cluster=\"$CLUSTER_NAME$\",namespace=\"$NAMESPACE$\",pod=~\"$WORKLOAD_NAME$-[^-]*-[^-]*\",container=\"$CONTAINER_NAME$\"}[$MEASUREMENT_DURATION$]))"
+                    },
+                    {
+                        "function": "sum",
+                        "query": "sum(avg_over_time(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_rate{cluster=\"$CLUSTER_NAME$\",namespace=\"$NAMESPACE$\",pod=~\"$WORKLOAD_NAME$-[^-]*-[^-]*\",container=\"$CONTAINER_NAME$\"}[$MEASUREMENT_DURATION$]))"
+                    }
+                ]
+            },
+            {
+                "name": "cpuThrottle",
+                "datasource": "prometheus",
+                "value_type": "double",
+                "kubernetes_object": "container",
+                "aggregation_functions": [
+                    {
+                        "function": "avg",
+                        "query": "avg(rate(container_cpu_cfs_throttled_seconds_total{cluster=\"$CLUSTER_NAME$\",namespace=\"$NAMESPACE$\",pod=~\"$WORKLOAD_NAME$-[^-]*-[^-]*\",container=\"$CONTAINER_NAME$\"}[$MEASUREMENT_DURATION$]))"
+                    },
+                    {
+                        "function": "max",
+                        "query": "max(rate(container_cpu_cfs_throttled_seconds_total{cluster=\"$CLUSTER_NAME$\",namespace=\"$NAMESPACE$\",pod=~\"$WORKLOAD_NAME$-[^-]*-[^-]*\",container=\"$CONTAINER_NAME$\"}[$MEASUREMENT_DURATION$]))"
+                    },
+                    {
+                        "function": "sum",
+                        "query": "sum(rate(container_cpu_cfs_throttled_seconds_total{cluster=\"$CLUSTER_NAME$\",namespace=\"$NAMESPACE$\",pod=~\"$WORKLOAD_NAME$-[^-]*-[^-]*\",container=\"$CONTAINER_NAME$\"}[$MEASUREMENT_DURATION$]))"
+                    }
+                ]
+            },
+            {
+                "name": "memoryRequest",
+                "datasource": "prometheus",
+                "value_type": "double",
+                "kubernetes_object": "container",
+                "aggregation_functions": [
+                    {
+                        "function": "avg",
+                        "query": "avg(kube_pod_container_resource_requests{cluster=\"$CLUSTER_NAME$\",namespace=\"$NAMESPACE$\",pod=~\"$WORKLOAD_NAME$-[^-]*-[^-]*\",container=\"$CONTAINER_NAME$\", resource=\"memory\", unit=\"byte\"})"
+                    },
+                    {
+                        "function": "sum",
+                        "query": "sum(kube_pod_container_resource_requests{cluster=\"$CLUSTER_NAME$\",namespace=\"$NAMESPACE$\",pod=~\"$WORKLOAD_NAME$-[^-]*-[^-]*\",container=\"$CONTAINER_NAME$\", resource=\"memory\", unit=\"byte\"})"
+                    }
+                ]
+            },
+            {
+                "name": "memoryLimit",
+                "datasource": "prometheus",
+                "value_type": "double",
+                "kubernetes_object": "container",
+                "aggregation_functions": [
+                    {
+                        "function": "avg",
+                        "query": "avg(kube_pod_container_resource_limits{cluster=\"$CLUSTER_NAME$\",namespace=\"$NAMESPACE$\",pod=~\"$WORKLOAD_NAME$-[^-]*-[^-]*\",container=\"$CONTAINER_NAME$\", resource=\"memory\", unit=\"byte\"})"
+                    },
+                    {
+                        "function": "sum",
+                        "query": "sum(kube_pod_container_resource_limits{cluster=\"$CLUSTER_NAME$\",namespace=\"$NAMESPACE$\",pod=~\"$WORKLOAD_NAME$-[^-]*-[^-]*\",container=\"$CONTAINER_NAME$\", resource=\"memory\", unit=\"byte\"})"
+                    }
+                ]
+            },
+            {
+                "name": "memoryUsage",
+                "datasource": "prometheus",
+                "value_type": "double",
+                "kubernetes_object": "container",
+                "aggregation_functions": [
+                    {
+                        "function": "avg",
+                        "query": "avg(avg_over_time(container_memory_working_set_bytes{cluster=\"$CLUSTER_NAME$\",namespace=\"$NAMESPACE$\",pod=~\"$WORKLOAD_NAME$-[^-]*-[^-]*\",container=\"$CONTAINER_NAME$\"}[$MEASUREMENT_DURATION$]))"
+                    },
+                    {
+                        "function": "min",
+                        "query": "min(min_over_time(container_memory_working_set_bytes{cluster=\"$CLUSTER_NAME$\",namespace=\"$NAMESPACE$\",pod=~\"$WORKLOAD_NAME$-[^-]*-[^-]*\",container=\"$CONTAINER_NAME$\"}[$MEASUREMENT_DURATION$]))"
+                    },
+                    {
+                        "function": "max",
+                        "query": "max(max_over_time(container_memory_working_set_bytes{cluster=\"$CLUSTER_NAME$\",namespace=\"$NAMESPACE$\",pod=~\"$WORKLOAD_NAME$-[^-]*-[^-]*\",container=\"$CONTAINER_NAME$\"}[$MEASUREMENT_DURATION$]))"
+                    },
+                    {
+                        "function": "sum",
+                        "query": "sum(avg_over_time(container_memory_working_set_bytes{cluster=\"$CLUSTER_NAME$\",namespace=\"$NAMESPACE$\",pod=~\"$WORKLOAD_NAME$-[^-]*-[^-]*\",container=\"$CONTAINER_NAME$\"}[$MEASUREMENT_DURATION$]))"
+                    }
+                ]
+            },
+            {
+                "name": "memoryRSS",
+                "datasource": "prometheus",
+                "value_type": "double",
+                "kubernetes_object": "container",
+                "aggregation_functions": [
+                    {
+                        "function": "avg",
+                        "query": "avg(avg_over_time(container_memory_rss{cluster=\"$CLUSTER_NAME$\",namespace=\"$NAMESPACE$\",pod=~\"$WORKLOAD_NAME$-[^-]*-[^-]*\",container=\"$CONTAINER_NAME$\"}[$MEASUREMENT_DURATION$]))"
+                    },
+                    {
+                        "function": "min",
+                        "query": "min(min_over_time(container_memory_rss{cluster=\"$CLUSTER_NAME$\",namespace=\"$NAMESPACE$\",pod=~\"$WORKLOAD_NAME$-[^-]*-[^-]*\",container=\"$CONTAINER_NAME$\"}[$MEASUREMENT_DURATION$]))"
+                    },
+                    {
+                        "function": "max",
+                        "query": "max(max_over_time(container_memory_rss{cluster=\"$CLUSTER_NAME$\",namespace=\"$NAMESPACE$\",pod=~\"$WORKLOAD_NAME$-[^-]*-[^-]*\",container=\"$CONTAINER_NAME$\"}[$MEASUREMENT_DURATION$]))"
+                    },
+                    {
+                        "function": "sum",
+                        "query": "sum(avg_over_time(container_memory_rss{cluster=\"$CLUSTER_NAME$\",namespace=\"$NAMESPACE$\",pod=~\"$WORKLOAD_NAME$-[^-]*-[^-]*\",container=\"$CONTAINER_NAME$\"}[$MEASUREMENT_DURATION$]))"
+                    }
+                ]
+            }
+        ]
+    }
+}
