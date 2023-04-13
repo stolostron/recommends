@@ -1,5 +1,5 @@
 {
-    "name": "resource-optimization-openshift",
+    "name": "resource-optimization-acm",
     "profile_version": 1,
     "k8s_type": "openshift",
     "slo": {
