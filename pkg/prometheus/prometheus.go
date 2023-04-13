@@ -6,9 +6,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/prometheus/client_golang/api"
-	v1 "github.com/prometheus/client_golang/api/prometheus/v1"
+	promApi "github.com/prometheus/client_golang/api"
+	promv1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	"github.com/prometheus/common/model"
+	"github.com/stolostron/recommends/pkg/config"
 	"k8s.io/klog"
 )
 
@@ -25,14 +26,14 @@ func GetLabels() (map[string][]string, error) {
 
 	deploymentContainers := make(map[string][]string)
 
-	client, err := api.NewClient(api.Config{
-		Address: "http://localhost:5555",
+	client, err := promApi.NewClient(promApi.Config{
+		Address: config.Cfg.ThanosURL,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("Error creating client: %v. Please ensure that the API server is running and the address is correct", err)
 	}
 
-	v1api := v1.NewAPI(client)
+	v1api := promv1.NewAPI(client)
 
 	query := `sum(
 		node_namespace_pod_container:container_cpu_usage_seconds_total:sum_rate{cluster="local-cluster", namespace="open-cluster-management-observability"}
