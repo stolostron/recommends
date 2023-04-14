@@ -79,36 +79,39 @@ func LoadValues(clusterID map[string]string, deployments map[string][]string, co
 		}
 	}
 
-	for deployment, container := range containerMap {
+	for deployment, containers := range containerMap {
+		for con := range containers {
 
-		//parse deployment data
-		requestBody = CreateExperiment{
-			Version:            "v1",
-			ExperimentName:     reqBody.ExperimentName,
-			ClusterName:        reqBody.ClusterName,
-			PerformanceProfile: "resource_optimization_openshift",
-			Mode:               "monitor",
-			TargetCluster:      "local",
-			KubernetesObjects: []KubernetesObject{
-				{
-					Type:       "deployment",
-					Name:       deployment,
-					Namespace:  kubeObj.Namespace,
-					Containers: container,
+			//parse deployment data
+			requestBody = CreateExperiment{
+				Version:            "v1",
+				ExperimentName:     fmt.Sprintf("%s-%s-%d", reqBody.ExperimentName, deployment, con),
+				ClusterName:        reqBody.ClusterName,
+				PerformanceProfile: "resource_optimization_openshift",
+				Mode:               "monitor",
+				TargetCluster:      "local",
+				KubernetesObjects: []KubernetesObject{
+					{
+						Type:       "deployment",
+						Name:       deployment,
+						Namespace:  kubeObj.Namespace,
+						Containers: containers,
+					},
 				},
-			},
-			TrialSettings: TrialSettings{
-				MeasurementDuration: "15min",
-			},
-			RecommendationSettings: RecommendationSettings{
-				Threshold: "0.1",
-			},
+				TrialSettings: TrialSettings{
+					MeasurementDuration: "15min",
+				},
+				RecommendationSettings: RecommendationSettings{
+					Threshold: "0.1",
+				},
+			}
+
+			requestBodies = append(requestBodies, requestBody)
+			createExperiment(requestBodies, context)
 		}
-		requestBodies = append(requestBodies, requestBody)
 
 	}
 
-	createExperiment(requestBodies, context)
 }
 
 func createExperiment(requestBodies []CreateExperiment, context context.Context) {
@@ -122,21 +125,19 @@ func createExperiment(requestBodies []CreateExperiment, context context.Context)
 	client := utils.HTTPClient()
 	// if post request fails retry with max wait time 30 sec
 	retry := 0
-	for {
-		res, err := client.Post(create_experiment_url, "application/json", bytes.NewBuffer(requestBodyJSON))
-		if err != nil {
-			// Max wait time is 30 sec
-			timeToSleep := 30 * time.Second
-			retry++
-			klog.Errorf("Cannot create createExperiment in kruize: %v. Will retry in %s\n", err, timeToSleep)
-			time.Sleep(timeToSleep) //wait 30 seconds
-		} else if res.StatusCode == 201 {
-			klog.Infof("CreateExperiment profile created successfully")
-			bodyBytes, _ := io.ReadAll(res.Body)
-			data := map[string]interface{}{}
-			if err := json.Unmarshal(bodyBytes, &data); err != nil {
-				klog.Errorf("Cannot unmarshal response data: %v", err)
-			}
+	res, err := client.Post(create_experiment_url, "application/json", bytes.NewBuffer(requestBodyJSON))
+	if err != nil {
+		// Max wait time is 30 sec
+		timeToSleep := 30 * time.Second
+		retry++
+		klog.Errorf("Cannot create createExperiment %s in kruize: %v. Will retry in %s\n", requestBodies[0].ExperimentName, err, timeToSleep)
+		time.Sleep(timeToSleep) //wait 30 seconds
+	} else if res.StatusCode == 201 {
+		klog.Infof("CreateExperiment profile created successfully")
+		bodyBytes, _ := io.ReadAll(res.Body)
+		data := map[string]interface{}{}
+		if err := json.Unmarshal(bodyBytes, &data); err != nil {
+			klog.Errorf("Cannot unmarshal response data: %v", err)
 		}
 	}
 
