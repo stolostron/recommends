@@ -132,7 +132,7 @@ func createExperiment(requestBodies []CreateExperiment, context context.Context)
 	if err != nil {
 		return err
 	} else if res.StatusCode == 201 {
-
+		return nil
 	}
 	return nil
 
