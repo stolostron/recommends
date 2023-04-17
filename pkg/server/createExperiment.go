@@ -10,7 +10,9 @@ import (
 
 	"github.com/stolostron/recommends/pkg/config"
 	"github.com/stolostron/recommends/pkg/helpers"
+	"github.com/stolostron/recommends/pkg/kruize"
 	"github.com/stolostron/recommends/pkg/utils"
+
 	"k8s.io/klog"
 )
 
@@ -69,11 +71,31 @@ func LoadValues(clusterID map[string]string, deployments map[string][]string, co
 
 	}
 
+	// Load PerformanceProfile in Kruize Instance first
+	perfProfileInitialized := false
+	for !perfProfileInitialized {
+		klog.Info("Initializing performanceProfile.")
+		perfProfileInitialized = kruize.InitPerformanceProfile()
+		if perfProfileInitialized {
+			klog.Info("Initialized performanceProfile.")
+			break
+		} else {
+			klog.Info("Retry performanceProfile Initializing.")
+			klog.V(9).Infof("May be kruize is taking long to start ... Retry after 1 second")
+			time.Sleep(1 * time.Second)
+		}
+
+	}
+
 	//get containers
 	for deployment, containerData := range deployments {
 		containerDataClean = helpers.RemoveDuplicate(containerData)
 		for _, contData := range containerDataClean {
 			containerMap[deployment] = append(containerMap[deployment], Container{ContainerName: contData})
+
+			pm := kruize.NewProfileManager("")
+			pm.GetPerformanceProfileInstance(reqBody.ClusterName, kubeObj.Namespace, deployment, contData)
+
 		}
 	}
 

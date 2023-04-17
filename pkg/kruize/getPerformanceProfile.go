@@ -42,7 +42,7 @@ func replaceTemplate(query string, clusterName string, namespace string,
 	klog.V(8).Infof("Template Query " + query)
 	query = strings.ReplaceAll(query, "$CLUSTER_NAME$", clusterName)
 	query = strings.ReplaceAll(query, "$NAMESPACE$", namespace)
-	query = strings.ReplaceAll(query, "$DEPLOYMENT_NAME$", workloadName)
+	query = strings.ReplaceAll(query, "$WORKLOAD_NAME$", workloadName)
 	query = strings.ReplaceAll(query, "$CONTAINER_NAME$", containerName)
 	klog.V(8).Infof("Instance Query " + query)
 	return query
