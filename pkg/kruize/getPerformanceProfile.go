@@ -24,27 +24,39 @@ func NewProfileManager(profile_name string) *profileManager {
 	return pm
 }
 
+//gets perfprof per container and returns query and name map
 func (p *profileManager) GetPerformanceProfileInstance(clusterName string, namespace string,
-	workloadName string, containerName string) model.Perf_profile {
+	workloadName string, containerName string, measurementDur string) map[string]string {
 	instanceProfile := *p.performanceProfile
+
+	queryNameMap := make(map[string]string) //query: name
+
 	for i, fv := range instanceProfile.Slo.Function_variables {
 		for j, af := range fv.Aggregation_functions {
-			af.Query = replaceTemplate(af.Query, clusterName, namespace, workloadName, containerName)
+
+			af.Query = replaceTemplate(fv.Name, af.Function, af.Query, clusterName, namespace, workloadName, containerName, measurementDur)
 			klog.V(9).Info("Updated aggregate function ", j)
+			queryNameMap[af.Query] = fv.Name
+
 		}
 		klog.V(9).Info("Updated function variable ", i)
+
 	}
-	return instanceProfile
+	return queryNameMap
+
 }
 
-func replaceTemplate(query string, clusterName string, namespace string,
-	workloadName string, containerName string) string {
+func replaceTemplate(name string, function string, query string, clusterName string, namespace string,
+	workloadName string, containerName string, measurementDur string) string {
+
 	klog.V(8).Infof("Template Query " + query)
 	query = strings.ReplaceAll(query, "$CLUSTER_NAME$", clusterName)
 	query = strings.ReplaceAll(query, "$NAMESPACE$", namespace)
 	query = strings.ReplaceAll(query, "$WORKLOAD_NAME$", workloadName)
 	query = strings.ReplaceAll(query, "$CONTAINER_NAME$", containerName)
+	query = strings.ReplaceAll(query, "$MEASUREMENT_DURATION$", measurementDur)
 	klog.V(8).Infof("Instance Query " + query)
+
 	return query
 }
 

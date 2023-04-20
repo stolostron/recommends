@@ -86,6 +86,7 @@ func LoadValues(clusterID map[string]string, deployments map[string][]string, co
 		}
 
 	}
+	reqBody.TrialSettings.MeasurementDuration = "60m"
 
 	//get containers
 	for deployment, containerData := range deployments {
@@ -93,14 +94,13 @@ func LoadValues(clusterID map[string]string, deployments map[string][]string, co
 		for _, contData := range containerDataClean {
 			containerMap[deployment] = append(containerMap[deployment], Container{ContainerName: contData})
 
-			pm := kruize.NewProfileManager("")
-			pm.GetPerformanceProfileInstance(reqBody.ClusterName, kubeObj.Namespace, deployment, contData)
-
 		}
 	}
+	pm := kruize.NewProfileManager("")
 
+	//create request per container
 	for deployment, containers := range containerMap {
-		for con := range containers {
+		for con, cons := range containers {
 
 			//parse deployment data
 			requestBody = CreateExperiment{
@@ -119,7 +119,7 @@ func LoadValues(clusterID map[string]string, deployments map[string][]string, co
 					},
 				},
 				TrialSettings: TrialSettings{
-					MeasurementDuration: "15min",
+					MeasurementDuration: "60m",
 				},
 				RecommendationSettings: RecommendationSettings{
 					Threshold: "0.1",
@@ -135,6 +135,14 @@ func LoadValues(clusterID map[string]string, deployments map[string][]string, co
 			}
 			klog.Infof("CreateExperiment profile created successfully")
 
+			//get perfprof instance per container:
+			queryNameMap := pm.GetPerformanceProfileInstance(reqBody.ClusterName, kubeObj.Namespace, deployment, cons.ContainerName, reqBody.TrialSettings.MeasurementDuration)
+
+			// //call metrics per query
+			metrics := kruize.GetMetricsForQuery(queryNameMap)
+
+			//call updateResults to send metrics to Kruize for each workload
+			UpdateResultRequest(requestBody, metrics)
 		}
 
 	}

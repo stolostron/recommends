@@ -25,7 +25,7 @@ func new() *Config {
 	// If environment variables are set, use default values
 	// Simply put, the order of preference is env -> default values (from left to right)
 	conf := &Config{
-		ThanosURL:   getEnv("THANOS_SERVER_URL", "https://localhost:5555"),
+		ThanosURL:   getEnv("THANOS_SERVER_URL", "http://localhost:5555"),
 		HttpPort:    getEnvAsInt("HTTP_PORT", 4020),
 		KruizeURL:   getEnv("KRUIZE_URL", "http://localhost:8080"),
 		ContextPath: getEnv("CONTEXT_PATH", "/recommends"),
