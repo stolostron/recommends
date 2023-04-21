@@ -17,9 +17,9 @@ var create_performance_profile_url = config.Cfg.KruizeURL + "/createPerformanceP
 
 func InitPerformanceProfile() bool {
 
-	postBody, err := os.ReadFile("./pkg/kruize/resource_optimization_openshift.json")
+	postBody, err := os.ReadFile("./pkg/kruize/resource_optimization_ocm.json")
 	if err != nil {
-		klog.Errorf("Error reading resource_optimization_openshift.json: %v \n", err)
+		klog.Errorf("Error reading resource_optimization_ocm.json: %v \n", err)
 		return false
 	}
 	client := utils.HTTPClient()

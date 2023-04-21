@@ -50,7 +50,7 @@ func replaceTemplate(query string, clusterName string, namespace string,
 
 func getPerformanceProfile(profileName string) (model.Perf_profile, bool) {
 	var result model.Perf_profile
-	defaultProfile := "./pkg/kruize/resource_optimization_openshift.json"
+	defaultProfile := "./pkg/kruize/resource_optimization_ocm.json"
 	if profileName == "" {
 		profileName = defaultProfile
 	} else {
