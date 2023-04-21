@@ -68,12 +68,13 @@ func LoadValues(requestName string, deployments map[string][]string, context con
 	}
 
 	for deployment, containers := range containerMap {
-		for con := range containers {
+		for _, con := range containers {
+			singleContainer := []Container{con}
 
 			//parse deployment data
 			requestBody = CreateExperiment{
-				Version:            "v1",
-				ExperimentName:     fmt.Sprintf("%s-%s-%d", reqBody.ExperimentName, deployment, con),
+				Version:            "1.0",
+				ExperimentName:     fmt.Sprintf("%s-%s-%d", requestName, deployment, con.ContainerName),
 				ClusterName:        reqBody.ClusterName,
 				PerformanceProfile: "resource-optimization-acm",
 				Mode:               "monitor",
@@ -83,7 +84,7 @@ func LoadValues(requestName string, deployments map[string][]string, context con
 						Type:       "deployment",
 						Name:       deployment,
 						Namespace:  kubeObj.Namespace,
-						Containers: containers,
+						Containers: singleContainer,
 					},
 				},
 				TrialSettings: TrialSettings{
