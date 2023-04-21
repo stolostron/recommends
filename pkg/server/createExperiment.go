@@ -74,7 +74,7 @@ func LoadValues(requestName string, deployments map[string][]string, context con
 			//parse deployment data
 			requestBody = CreateExperiment{
 				Version:            "1.0",
-				ExperimentName:     fmt.Sprintf("%s-%s-%d", requestName, deployment, con.ContainerName),
+				ExperimentName:     fmt.Sprintf("%s-%s-%s", requestName, deployment, con.ContainerName),
 				ClusterName:        reqBody.ClusterName,
 				PerformanceProfile: "resource-optimization-acm",
 				Mode:               "monitor",
