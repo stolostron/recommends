@@ -14,10 +14,12 @@ var Cfg = new()
 
 // Define a Config type to hold our config properties.
 type Config struct {
-	ThanosURL   string
-	HttpPort    int
-	KruizeURL   string
-	ContextPath string
+	ThanosURL     string
+	HttpPort      int
+	KruizeURL     string
+	ContextPath   string
+	RetryCount    int
+	RetryInterval int
 }
 
 // Return new Config object instance
@@ -25,10 +27,12 @@ func new() *Config {
 	// If environment variables are set, use default values
 	// Simply put, the order of preference is env -> default values (from left to right)
 	conf := &Config{
-		ThanosURL:   getEnv("THANOS_SERVER_URL", "http://localhost:5555"),
-		HttpPort:    getEnvAsInt("HTTP_PORT", 4020),
-		KruizeURL:   getEnv("KRUIZE_URL", "http://localhost:8080"),
-		ContextPath: getEnv("CONTEXT_PATH", "/recommends"),
+		ThanosURL:     getEnv("THANOS_SERVER_URL", "http://localhost:5555"),
+		HttpPort:      getEnvAsInt("HTTP_PORT", 4020),
+		KruizeURL:     getEnv("KRUIZE_URL", "http://localhost:8080"),
+		ContextPath:   getEnv("CONTEXT_PATH", "/recommends"),
+		RetryCount:    getEnvAsInt("RETRY_COUNT", 2),
+		RetryInterval: getEnvAsInt("RETRY_INTERVAL", 100),
 	}
 	return conf
 }

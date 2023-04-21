@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 
 	"github.com/golang/gddo/httputil/header"
@@ -62,7 +61,7 @@ func computeRecommendations(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "{\"message\":\"Request body must not be empty.\"}", http.StatusBadRequest)
 
 		default:
-			log.Print(err.Error())
+			klog.Error(err.Error())
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		}
 		return

@@ -70,11 +70,12 @@ func LoadValues(requestName string, deployments map[string][]string, context con
 	for deployment, containers := range containerMap {
 		for _, con := range containers {
 			singleContainer := []Container{con}
+			experimentName := fmt.Sprintf("%s-%s-%s", requestName, deployment, con.ContainerName)
 
 			//parse deployment data
 			requestBody = CreateExperiment{
 				Version:            "1.0",
-				ExperimentName:     fmt.Sprintf("%s-%s-%s", requestName, deployment, con.ContainerName),
+				ExperimentName:     experimentName,
 				ClusterName:        reqBody.ClusterName,
 				PerformanceProfile: "resource-optimization-acm",
 				Mode:               "monitor",
@@ -96,13 +97,17 @@ func LoadValues(requestName string, deployments map[string][]string, context con
 			}
 
 			requestBodies := []CreateExperiment{requestBody}
+			count := 0
 			err := createExperiment(requestBodies, context)
-			for err != nil {
-				timeToSleep := 30 * time.Second
-				klog.Errorf("Cannot create createExperiment %s in kruize: %v. Will retry in %s\n", requestBodies[0].ExperimentName, err, timeToSleep)
-				time.Sleep(timeToSleep)
+			for err != nil && count < config.Cfg.RetryCount {
+				count = count + 1
+				klog.Errorf("Cannot create createExperiment %s in kruize: Will retry \n", experimentName)
+				time.Sleep(time.Duration(config.Cfg.RetryInterval) * time.Millisecond)
+				err = createExperiment(requestBodies, context)
 			}
-			klog.Infof("CreateExperiment profile created successfully")
+			if err != nil {
+				klog.Infof("CreateExperiment %s profile created successfully", experimentName)
+			}
 
 		}
 
