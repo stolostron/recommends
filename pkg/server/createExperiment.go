@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/stolostron/recommends/pkg/config"
@@ -51,7 +50,7 @@ type RecommendationSettings struct {
 	Threshold string `json:"threshold"`
 }
 
-func LoadValues(clusterID map[string]string, deployments map[string][]string, context context.Context) {
+func LoadValues(requestName string, deployments map[string][]string, context context.Context) {
 
 	var reqBody CreateExperiment
 	var kubeObj KubernetesObject
@@ -59,15 +58,6 @@ func LoadValues(clusterID map[string]string, deployments map[string][]string, co
 	var requestBody CreateExperiment
 
 	containerMap := make(map[string][]Container)
-
-	// parse the clusterID
-	for name, id := range clusterID {
-		reqBody.ExperimentName = fmt.Sprint(name + "-" + id)
-		parts := strings.Split(name, "_")
-		reqBody.ClusterName = parts[0]
-		kubeObj.Namespace = parts[1]
-
-	}
 
 	//get containers
 	for deployment, containerData := range deployments {
@@ -97,7 +87,7 @@ func LoadValues(clusterID map[string]string, deployments map[string][]string, co
 					},
 				},
 				TrialSettings: TrialSettings{
-					MeasurementDuration: "15min",
+					MeasurementDuration: "60min",
 				},
 				RecommendationSettings: RecommendationSettings{
 					Threshold: "0.1",
@@ -127,7 +117,7 @@ func createExperiment(requestBodies []CreateExperiment, context context.Context)
 		return err
 	}
 	client := utils.HTTPClient()
-
+	klog.Info("Posting create Experiment to Kruize Service", bytes.NewBuffer(requestBodyJSON))
 	res, err := client.Post(create_experiment_url, "application/json", bytes.NewBuffer(requestBodyJSON))
 	if err != nil {
 		return err

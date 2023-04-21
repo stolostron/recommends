@@ -14,11 +14,12 @@ import (
 )
 
 type Result struct {
-	Container string `json:"container"`
-	Workload  string `json:"workload"`
+	Container    string `json:"container"`
+	Workload     string `json:"workload"`
+	WorkloadType string `json:"workloadType"`
 }
 
-func GetLabels() (map[string][]string, error) {
+func GetLabels(clusterName string, namespace string) (map[string][]string, error) {
 
 	//setup context with a timeout to avoid blocking
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
@@ -34,12 +35,14 @@ func GetLabels() (map[string][]string, error) {
 	}
 
 	v1api := promv1.NewAPI(client)
-
+	clusterFilter := `cluster="` + clusterName + `"`
+	namespaceFilter := `namespace="` + namespace + `"`
+	allFilter := clusterFilter + `,` + namespaceFilter
 	query := `sum(
-		node_namespace_pod_container:container_cpu_usage_seconds_total:sum_rate{cluster="local-cluster", namespace="open-cluster-management-observability"}
+		node_namespace_pod_container:container_cpu_usage_seconds_total:sum_rate{` + allFilter + `}
 	  * on(namespace, pod)
-		group_left( workload_type, workload) namespace_workload_pod:kube_pod_owner:relabel{cluster="local-cluster", namespace="open-cluster-management-observability", workload_type="deployment"}
-	) by (container,workload)`
+		group_left( workload_type, workload) namespace_workload_pod:kube_pod_owner:relabel{` + allFilter + `, workload_type=~".+"}
+	) by (container,workload,workload_type)`
 
 	res, _, err := v1api.Query(ctx, query, time.Now())
 	if err != nil {
@@ -56,10 +59,12 @@ func GetLabels() (map[string][]string, error) {
 			labels := sample.Metric
 			container := labels["container"]
 			workload := labels["workload"]
+			workloadType := labels["workload_type"]
 
 			r := Result{
-				Container: string(container),
-				Workload:  string(workload),
+				Container:    string(container),
+				Workload:     string(workload),
+				WorkloadType: string(workloadType),
 			}
 
 			if _, ok := deploymentContainers[r.Workload]; !ok {
