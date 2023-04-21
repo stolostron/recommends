@@ -19,15 +19,15 @@ import (
 var create_experiment_url = config.Cfg.KruizeURL + "/createExperiment"
 
 type CreateExperiment struct {
-	Version                string             `json:"version"`
-	ExperimentName         string             `json:"experiment_name"`
-	ClusterName            string             `json:"cluster_name"`
-	PerformanceProfile     string             `json:"performace_profile"`
-	Mode                   string             `json:"mode"`
-	TargetCluster          string             `json:"target_cluster"`
-	KubernetesObjects      []KubernetesObject `json:"kubernetes_objects"`
-	TrialSettings          TrialSettings
-	RecommendationSettings RecommendationSettings
+	Version                string                 `json:"version"`
+	ExperimentName         string                 `json:"experiment_name"`
+	ClusterName            string                 `json:"cluster_name"`
+	PerformanceProfile     string                 `json:"performance_profile"`
+	Mode                   string                 `json:"mode"`
+	TargetCluster          string                 `json:"target_cluster"`
+	KubernetesObjects      []KubernetesObject     `json:"kubernetes_objects"`
+	TrialSettings          TrialSettings          `json:"trial_settings"`
+	RecommendationSettings RecommendationSettings `json:"recommendation_settings"`
 }
 
 type KubernetesObject struct {
@@ -75,7 +75,7 @@ func LoadValues(requestName string, deployments map[string][]string, context con
 				Version:            "v1",
 				ExperimentName:     fmt.Sprintf("%s-%s-%d", reqBody.ExperimentName, deployment, con),
 				ClusterName:        reqBody.ClusterName,
-				PerformanceProfile: "resource_optimization_openshift",
+				PerformanceProfile: "resource-optimization-acm",
 				Mode:               "monitor",
 				TargetCluster:      "remote",
 				KubernetesObjects: []KubernetesObject{
