@@ -5,14 +5,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/stolostron/recommends/pkg/config"
 	"github.com/stolostron/recommends/pkg/helpers"
-	"github.com/stolostron/recommends/pkg/kruize"
 	"github.com/stolostron/recommends/pkg/utils"
-
 	"k8s.io/klog"
 )
 
@@ -22,15 +19,15 @@ import (
 var create_experiment_url = config.Cfg.KruizeURL + "/createExperiment"
 
 type CreateExperiment struct {
-	Version                string             `json:"version"`
-	ExperimentName         string             `json:"experiment_name"`
-	ClusterName            string             `json:"cluster_name"`
-	PerformanceProfile     string             `json:"performace_profile"`
-	Mode                   string             `json:"mode"`
-	TargetCluster          string             `json:"target_cluster"`
-	KubernetesObjects      []KubernetesObject `json:"kubernetes_objects"`
-	TrialSettings          TrialSettings
-	RecommendationSettings RecommendationSettings
+	Version                string                 `json:"version"`
+	ExperimentName         string                 `json:"experiment_name"`
+	ClusterName            string                 `json:"cluster_name"`
+	PerformanceProfile     string                 `json:"performance_profile"`
+	Mode                   string                 `json:"mode"`
+	TargetCluster          string                 `json:"target_cluster"`
+	KubernetesObjects      []KubernetesObject     `json:"kubernetes_objects"`
+	TrialSettings          TrialSettings          `json:"trial_settings"`
+	RecommendationSettings RecommendationSettings `json:"recommendation_settings"`
 }
 
 type KubernetesObject struct {
@@ -53,7 +50,7 @@ type RecommendationSettings struct {
 	Threshold string `json:"threshold"`
 }
 
-func LoadValues(clusterID map[string]string, deployments map[string][]string, context context.Context) {
+func LoadValues(requestName string, deployments map[string][]string, context context.Context) {
 
 	var reqBody CreateExperiment
 	var kubeObj KubernetesObject
@@ -62,52 +59,25 @@ func LoadValues(clusterID map[string]string, deployments map[string][]string, co
 
 	containerMap := make(map[string][]Container)
 
-	// parse the clusterID
-	for name, id := range clusterID {
-		reqBody.ExperimentName = fmt.Sprint(name + "-" + id)
-		parts := strings.Split(name, "_")
-		reqBody.ClusterName = parts[0]
-		kubeObj.Namespace = parts[1]
-
-	}
-
-	// Load PerformanceProfile in Kruize Instance first
-	perfProfileInitialized := false
-	for !perfProfileInitialized {
-		klog.Info("Initializing performanceProfile.")
-		perfProfileInitialized = kruize.InitPerformanceProfile()
-		if perfProfileInitialized {
-			klog.Info("Initialized performanceProfile.")
-			break
-		} else {
-			klog.Info("Retry performanceProfile Initializing.")
-			klog.V(9).Infof("May be kruize is taking long to start ... Retry after 1 second")
-			time.Sleep(1 * time.Second)
-		}
-
-	}
-	reqBody.TrialSettings.MeasurementDuration = "60m"
-
 	//get containers
 	for deployment, containerData := range deployments {
 		containerDataClean = helpers.RemoveDuplicate(containerData)
 		for _, contData := range containerDataClean {
 			containerMap[deployment] = append(containerMap[deployment], Container{ContainerName: contData})
-
 		}
 	}
-	pm := kruize.NewProfileManager("")
 
-	//create request per container
 	for deployment, containers := range containerMap {
-		for con, cons := range containers {
+		for _, con := range containers {
+			singleContainer := []Container{con}
+			experimentName := fmt.Sprintf("%s-%s-%s", requestName, deployment, con.ContainerName)
 
 			//parse deployment data
 			requestBody = CreateExperiment{
-				Version:            "v1",
-				ExperimentName:     fmt.Sprintf("%s-%s-%d", reqBody.ExperimentName, deployment, con),
+				Version:            "1.0",
+				ExperimentName:     experimentName,
 				ClusterName:        reqBody.ClusterName,
-				PerformanceProfile: "resource_optimization_openshift",
+				PerformanceProfile: "resource-optimization-acm",
 				Mode:               "monitor",
 				TargetCluster:      "remote",
 				KubernetesObjects: []KubernetesObject{
@@ -115,11 +85,11 @@ func LoadValues(clusterID map[string]string, deployments map[string][]string, co
 						Type:       "deployment",
 						Name:       deployment,
 						Namespace:  kubeObj.Namespace,
-						Containers: containers,
+						Containers: singleContainer,
 					},
 				},
 				TrialSettings: TrialSettings{
-					MeasurementDuration: "60m",
+					MeasurementDuration: "60min",
 				},
 				RecommendationSettings: RecommendationSettings{
 					Threshold: "0.1",
@@ -127,22 +97,18 @@ func LoadValues(clusterID map[string]string, deployments map[string][]string, co
 			}
 
 			requestBodies := []CreateExperiment{requestBody}
+			count := 0
 			err := createExperiment(requestBodies, context)
-			for err != nil {
-				timeToSleep := 30 * time.Second
-				klog.Errorf("Cannot create createExperiment %s in kruize: %v. Will retry in %s\n", requestBodies[0].ExperimentName, err, timeToSleep)
-				time.Sleep(timeToSleep)
+			for err != nil && count < config.Cfg.RetryCount {
+				count = count + 1
+				klog.Errorf("Cannot create createExperiment %s in kruize: Will retry \n", experimentName)
+				time.Sleep(time.Duration(config.Cfg.RetryInterval) * time.Millisecond)
+				err = createExperiment(requestBodies, context)
 			}
-			klog.Infof("CreateExperiment profile created successfully")
+			if err != nil {
+				klog.Infof("CreateExperiment %s profile created successfully", experimentName)
+			}
 
-			//get perfprof instance per container:
-			queryNameMap := pm.GetPerformanceProfileInstance(reqBody.ClusterName, kubeObj.Namespace, deployment, cons.ContainerName, reqBody.TrialSettings.MeasurementDuration)
-
-			// //call metrics per query
-			metrics := kruize.GetMetricsForQuery(queryNameMap)
-
-			//call updateResults to send metrics to Kruize for each workload
-			UpdateResultRequest(requestBody, metrics)
 		}
 
 	}
@@ -157,7 +123,7 @@ func createExperiment(requestBodies []CreateExperiment, context context.Context)
 		return err
 	}
 	client := utils.HTTPClient()
-
+	klog.Info("Posting create Experiment to Kruize Service", bytes.NewBuffer(requestBodyJSON))
 	res, err := client.Post(create_experiment_url, "application/json", bytes.NewBuffer(requestBodyJSON))
 	if err != nil {
 		return err

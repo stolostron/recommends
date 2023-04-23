@@ -22,10 +22,10 @@ func TestNew(t *testing.T) {
 		expected  testConfig
 	}{
 		"should execute \"new()\" and return a new config object instance",
-		getEnv("THANOS_SERVER_URL", "https://localhost:5555"),
+		getEnv("THANOS_SERVER_URL", "http://localhost:5555"),
 		getEnvAsInt("HTTP_PORT", 4020),
 		getEnv("KRUIZE_URL", "http://localhost:8080"),
-		testConfig{getEnv("THANOS_SERVER_URL", "https://localhost:5555"), getEnvAsInt("HTTP_PORT", 4020), getEnv("KRUIZE_URL", "http://localhost:8080")},
+		testConfig{getEnv("THANOS_SERVER_URL", "http://localhost:5555"), getEnvAsInt("HTTP_PORT", 4020), getEnv("KRUIZE_URL", "http://localhost:8080")},
 	}
 
 	testCfg := new()
