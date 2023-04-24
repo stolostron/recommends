@@ -2,9 +2,14 @@ package server
 
 import (
 	"github.com/stolostron/recommends/pkg/config"
-	"github.com/stolostron/recommends/pkg/kruize"
 	"k8s.io/klog"
 )
+
+var UpdateQueue chan CreateExperiment
+
+func init() {
+	UpdateQueue = make(chan CreateExperiment)
+}
 
 //gets values from getPerformanceProfileMetrics passed to it
 //and passes them as request to updateResults kruize
@@ -49,9 +54,17 @@ type AggregationInfo struct {
 	Format string `json:"format"`
 }
 
-func UpdateResultRequest(ce CreateExperiment, metrics kruize.Metrics) {
+func ProcessUpdateQueue(q chan CreateExperiment) {
+	for {
+		klog.Info("Processing update Q")
+		ce := <-q
+		updateResultRequest(&ce)
+		klog.Infof("Processed %s", ce.ExperimentName)
+	}
+}
 
-	klog.Infof("Experiment: %s\n", ce)
-	klog.Infof("With metrics: %s\n", metrics)
+func updateResultRequest(ce *CreateExperiment) {
+
+	klog.Infof("Update Result Experiment: %s\n", ce.ExperimentName)
 
 }

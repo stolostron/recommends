@@ -50,8 +50,8 @@ type RecommendationSettings struct {
 	Threshold string `json:"threshold"`
 }
 
-func LoadValues(requestName string, deployments map[string][]string, context context.Context) {
-
+func processRequest(req *Request) {
+	klog.Infof("Processing Request ..%d", len(req.Workloads))
 	var reqBody CreateExperiment
 	var kubeObj KubernetesObject
 	var containerDataClean []string
@@ -60,7 +60,7 @@ func LoadValues(requestName string, deployments map[string][]string, context con
 	containerMap := make(map[string][]Container)
 
 	//get containers
-	for deployment, containerData := range deployments {
+	for deployment, containerData := range req.Workloads {
 		containerDataClean = helpers.RemoveDuplicate(containerData)
 		for _, contData := range containerDataClean {
 			containerMap[deployment] = append(containerMap[deployment], Container{ContainerName: contData})
@@ -70,8 +70,8 @@ func LoadValues(requestName string, deployments map[string][]string, context con
 	for deployment, containers := range containerMap {
 		for _, con := range containers {
 			singleContainer := []Container{con}
-			experimentName := fmt.Sprintf("%s-%s-%s", requestName, deployment, con.ContainerName)
-
+			experimentName := fmt.Sprintf("%s-%s-%s", req.RequestName, deployment, con.ContainerName)
+			klog.Infof("Experiment name %s ", experimentName)
 			//parse deployment data
 			requestBody = CreateExperiment{
 				Version:            "1.0",
@@ -98,15 +98,16 @@ func LoadValues(requestName string, deployments map[string][]string, context con
 
 			requestBodies := []CreateExperiment{requestBody}
 			count := 0
-			err := createExperiment(requestBodies, context)
+			err := createExperiment(requestBodies, req.RequestContext)
 			for err != nil && count < config.Cfg.RetryCount {
 				count = count + 1
 				klog.Errorf("Cannot create createExperiment %s in kruize: Will retry \n", experimentName)
 				time.Sleep(time.Duration(config.Cfg.RetryInterval) * time.Millisecond)
-				err = createExperiment(requestBodies, context)
+				err = createExperiment(requestBodies, req.RequestContext)
 			}
-			if err != nil {
+			if err == nil {
 				klog.Infof("CreateExperiment %s profile created successfully", experimentName)
+				UpdateQueue <- requestBody
 			}
 
 		}
@@ -132,4 +133,12 @@ func createExperiment(requestBodies []CreateExperiment, context context.Context)
 	}
 	return nil
 
+}
+func ProcessCreateQueue(q chan Request) {
+	for {
+		klog.Info("Processing create Q")
+		req := <-q
+		processRequest(&req)
+		klog.Infof("Processed %s", req.RequestName)
+	}
 }

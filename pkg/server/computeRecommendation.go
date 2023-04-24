@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -13,6 +14,12 @@ import (
 	"k8s.io/klog"
 )
 
+var CreateQueue chan Request
+
+func init() {
+	CreateQueue = make(chan Request)
+}
+
 type recommendation []struct {
 	ClusterName         string `json:"clusterName"`
 	Namespace           string `json:"namespace"`
@@ -20,9 +27,15 @@ type recommendation []struct {
 	MeasurementDuration string `json:"measurement_duration"` //ex: "15min"
 }
 
+type Request struct {
+	RequestName    string
+	Workloads      map[string][]string
+	RequestContext context.Context
+}
+
 // prepares recommendation request
 func computeRecommendations(w http.ResponseWriter, r *http.Request) {
-
+	klog.Infof("Received Request for  compute Recommendations")
 	var newRecommendation recommendation
 	requestIdMap := make(map[string]string) //ex: clustername-namespace:"id-12345"
 	var requestName string
@@ -96,7 +109,8 @@ func computeRecommendations(w http.ResponseWriter, r *http.Request) {
 
 	//createExperiment with data:
 	if err == nil {
-		LoadValues(requestName, deployments, context)
+		//LoadValues(requestName, deployments, context)
+		CreateQueue <- Request{RequestName: requestName, Workloads: deployments, RequestContext: context}
 	} else {
 		klog.Errorf("Error getting deployment and container labels from prometheus: %s", err)
 		return
