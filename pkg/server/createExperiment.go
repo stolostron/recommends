@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/stolostron/recommends/pkg/config"
@@ -52,10 +53,8 @@ type RecommendationSettings struct {
 
 func processRequest(req *Request) {
 	klog.Infof("Processing Request ..%d", len(req.Workloads))
-	var reqBody CreateExperiment
-	var kubeObj KubernetesObject
-	var containerDataClean []string
 	var requestBody CreateExperiment
+	var containerDataClean []string
 
 	containerMap := make(map[string][]Container)
 
@@ -71,12 +70,12 @@ func processRequest(req *Request) {
 		for _, con := range containers {
 			singleContainer := []Container{con}
 			experimentName := fmt.Sprintf("%s-%s-%s", req.RequestName, deployment, con.ContainerName)
-			klog.Infof("Experiment name %s ", experimentName)
-			//parse deployment data
+			clusterName := strings.Split(req.RequestName, "_")[1]
+			namespace := strings.Split(req.RequestName, "_")[2]
 			requestBody = CreateExperiment{
 				Version:            "1.0",
 				ExperimentName:     experimentName,
-				ClusterName:        reqBody.ClusterName,
+				ClusterName:        clusterName,
 				PerformanceProfile: "resource-optimization-acm",
 				Mode:               "monitor",
 				TargetCluster:      "remote",
@@ -84,12 +83,12 @@ func processRequest(req *Request) {
 					{
 						Type:       "deployment",
 						Name:       deployment,
-						Namespace:  kubeObj.Namespace,
+						Namespace:  namespace,
 						Containers: singleContainer,
 					},
 				},
 				TrialSettings: TrialSettings{
-					MeasurementDuration: "60min",
+					MeasurementDuration: "60m",
 				},
 				RecommendationSettings: RecommendationSettings{
 					Threshold: "0.1",
@@ -106,10 +105,9 @@ func processRequest(req *Request) {
 				err = createExperiment(requestBodies, req.RequestContext)
 			}
 			if err == nil {
-				klog.Infof("CreateExperiment %s profile created successfully", experimentName)
+				klog.V(5).Infof("CreateExperiment %s profile created successfully", experimentName)
 				UpdateQueue <- requestBody
 			}
-
 		}
 
 	}
@@ -124,7 +122,7 @@ func createExperiment(requestBodies []CreateExperiment, context context.Context)
 		return err
 	}
 	client := utils.HTTPClient()
-	klog.Info("Posting create Experiment to Kruize Service", bytes.NewBuffer(requestBodyJSON))
+	klog.V(5).Info("Posting create Experiment to Kruize Service", bytes.NewBuffer(requestBodyJSON))
 	res, err := client.Post(create_experiment_url, "application/json", bytes.NewBuffer(requestBodyJSON))
 	if err != nil {
 		return err
@@ -136,9 +134,9 @@ func createExperiment(requestBodies []CreateExperiment, context context.Context)
 }
 func ProcessCreateQueue(q chan Request) {
 	for {
-		klog.Info("Processing create Q")
+		klog.V(5).Info("Processing create Q")
 		req := <-q
 		processRequest(&req)
-		klog.Infof("Processed %s", req.RequestName)
+		klog.V(5).Infof("Processed %s", req.RequestName)
 	}
 }

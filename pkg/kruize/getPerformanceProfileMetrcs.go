@@ -19,28 +19,28 @@ type Metrics struct {
 }
 
 type Result struct {
-	Value           string          `json:"value"`
-	Format          string          `json:"format"`
-	AggregationInfo AggregationInfo `json:"aggregation_info"`
+	Value           string                `json:"value,omitempty"`
+	Format          string                `json:"format,omitempty"`
+	AggregationInfo AggregationInfoStruct `json:"aggregation_info"`
 }
-
-type AggregationInfo struct {
-	Function string `json:"function"`
-	Query    string `json:"query"`
+type AggregationInfoStruct struct {
+	Sum    *float64 `json:"sum"`
+	Max    *float64 `json:"max,omitempty"`
+	Min    *float64 `json:"min,omitempty"`
+	Avg    *float64 `json:"avg"`
+	Format string   `json:"format"`
 }
 
 ///takes in queries from the performance profile and queries thanos then dumps results in updateResults
 
 //get the query name, function and query per workload get metrics, return metrics
 
-func GetMetricsForQuery(queryNameMap map[string]string) Metrics {
+func GetMetricsForQuery(queryNameMap map[string]string) *Metrics {
 
 	var metrics Metrics
 	var format string
 
 	for query, name := range queryNameMap {
-
-		// klog.Infof("inside getMetricsForQuery for query: %s", query)
 		//setup context with a timeout to avoid blocking
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 		defer cancel()
@@ -60,26 +60,46 @@ func GetMetricsForQuery(queryNameMap map[string]string) Metrics {
 				klog.Errorf("API query timed out: %v", err)
 			}
 			klog.Errorf("API query failed: %v", err)
+		} else {
+			klog.Infof("Query results: %s", res.String())
 		}
 
 		vector := res.(model.Vector)
 
+		var avg, sum, max, min *float64
 		for _, sample := range vector {
 			klog.V(5).Infof("Name: %s, Value: %v, Time: %d, Metric: %s", name, sample.Value, sample.Timestamp, query)
-
 			if strings.Contains(name, "cpu") {
 				format = "cores"
 
 			} else {
 				format = "MiB"
 			}
-
+			function := strings.Split(query, "(")[0]
+			if function == "avg" {
+				avg = (*float64)(&sample.Value)
+			}
+			// else if function == "min" {
+			// 	min =
+			// } else if function == "max" {
+			// 	max = function
+			// } else if function == "sum" {
+			// 	sum = function
+			// }
 			metrics.Name = name
 			metrics.Results = Result{Value: sample.Value.String(),
-				Format: format, AggregationInfo: AggregationInfo{Function: strings.Split(query, "(")[0], Query: query}}
+				Format: format, AggregationInfo: AggregationInfoStruct{
+					Avg:    avg,
+					Min:    min,
+					Max:    max,
+					Sum:    sum,
+					Format: format,
+				}}
 
 		}
 	}
 
-	return metrics
+	klog.Info("Metrics inside metrics: %s ", metrics)
+
+	return &metrics
 }

@@ -35,7 +35,7 @@ type Request struct {
 
 // prepares recommendation request
 func computeRecommendations(w http.ResponseWriter, r *http.Request) {
-	klog.Infof("Received Request for  compute Recommendations")
+	klog.V(5).Infof("Received Request for compute Recommendations")
 	var newRecommendation recommendation
 	requestIdMap := make(map[string]string) //ex: clustername-namespace:"id-12345"
 	var requestName string
