@@ -19,87 +19,97 @@ type Metrics struct {
 }
 
 type Result struct {
-	Value           string                `json:"value,omitempty"`
+	Value           *float64              `json:"value,omitempty"`
 	Format          string                `json:"format,omitempty"`
 	AggregationInfo AggregationInfoStruct `json:"aggregation_info"`
 }
 type AggregationInfoStruct struct {
-	Sum    *float64 `json:"sum"`
+	Avg    *float64 `json:"avg"`
 	Max    *float64 `json:"max,omitempty"`
 	Min    *float64 `json:"min,omitempty"`
-	Avg    *float64 `json:"avg"`
+	Sum    *float64 `json:"sum"`
 	Format string   `json:"format"`
 }
 
 ///takes in queries from the performance profile and queries thanos then dumps results in updateResults
-
 //get the query name, function and query per workload get metrics, return metrics
 
-func GetMetricsForQuery(queryNameMap map[string]string) *Metrics {
-
+func GetMetricsForQuery(queryNameMap map[string][]string) *Metrics {
+	var MetricsList []Metrics
 	var metrics Metrics
 	var format string
+	var aggregateStruct AggregationInfoStruct
+	var resultValue *float64
 
-	for query, name := range queryNameMap {
-		//setup context with a timeout to avoid blocking
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-		defer cancel()
+	for name, queries := range queryNameMap {
+		if strings.Contains(name, "cpu") {
+			format = "cores"
 
-		client, err := promApi.NewClient(promApi.Config{
-			Address: config.Cfg.ThanosURL,
-		})
-		if err != nil {
-			klog.Errorf("Error creating client: %v. Please ensure that the API server is running and the address is correct", err)
-		}
-
-		v1api := promv1.NewAPI(client)
-
-		res, _, err := v1api.Query(ctx, query, time.Now())
-		if err != nil {
-			if errors.Is(err, context.DeadlineExceeded) {
-				klog.Errorf("API query timed out: %v", err)
-			}
-			klog.Errorf("API query failed: %v", err)
 		} else {
-			klog.Infof("Query results: %s", res.String())
+			format = "MiB"
 		}
+		for _, query := range queries {
+			//setup context with a timeout to avoid blocking
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+			defer cancel()
 
-		vector := res.(model.Vector)
-
-		var avg, sum, max, min *float64
-		for _, sample := range vector {
-			klog.V(5).Infof("Name: %s, Value: %v, Time: %d, Metric: %s", name, sample.Value, sample.Timestamp, query)
-			if strings.Contains(name, "cpu") {
-				format = "cores"
-
-			} else {
-				format = "MiB"
+			client, err := promApi.NewClient(promApi.Config{
+				Address: config.Cfg.ThanosURL,
+			})
+			if err != nil {
+				klog.Errorf("Error creating client: %v. Please ensure that the API server is running and the address is correct", err)
 			}
-			function := strings.Split(query, "(")[0]
-			if function == "avg" {
-				avg = (*float64)(&sample.Value)
+
+			v1api := promv1.NewAPI(client)
+
+			res, _, err := v1api.Query(ctx, query, time.Now())
+			if err != nil {
+				if errors.Is(err, context.DeadlineExceeded) {
+					klog.Errorf("API query timed out: %v", err)
+				}
+				klog.Errorf("API query failed: %v", err)
 			}
-			// else if function == "min" {
-			// 	min =
-			// } else if function == "max" {
-			// 	max = function
-			// } else if function == "sum" {
-			// 	sum = function
-			// }
-			metrics.Name = name
-			metrics.Results = Result{Value: sample.Value.String(),
-				Format: format, AggregationInfo: AggregationInfoStruct{
+
+			vector := res.(model.Vector)
+			var avg, sum, max, min *float64
+			for _, sample := range vector {
+				klog.Infof("Name: %s, Value: %v, Time: %d, Query: %s", name, sample.Value, sample.Timestamp, query)
+
+				function := strings.Split(query, "(")[0] //get function
+
+				if function == "avg" {
+					avg = (*float64)(&sample.Value)
+					resultValue = (*float64)(&sample.Value) //resultValue == avg
+				}
+				if function == "min" {
+					min = (*float64)(&sample.Value)
+				}
+				if function == "max" {
+					max = (*float64)(&sample.Value)
+				}
+				if function == "sum" {
+					sum = (*float64)(&sample.Value)
+				}
+
+				aggregateStruct = AggregationInfoStruct{
 					Avg:    avg,
-					Min:    min,
 					Max:    max,
+					Min:    min,
 					Sum:    sum,
 					Format: format,
-				}}
-
+				}
+			}
 		}
+
+		metrics.Name = name
+		metrics.Results = Result{Value: resultValue,
+			Format: format, AggregationInfo: aggregateStruct,
+		}
+
+		klog.Info(metrics)
 	}
 
-	klog.Info("Metrics inside metrics: %s ", metrics)
+	MetricsList = append(MetricsList, metrics)
 
 	return &metrics
 }

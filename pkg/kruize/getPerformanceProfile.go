@@ -26,17 +26,19 @@ func NewProfileManager(profile_name string) *profileManager {
 
 //gets perfprof per container and returns query and name map
 func (p *profileManager) GetPerformanceProfileInstance(clusterName string, namespace string,
-	workloadName string, containerName string, measurementDur string) map[string]string {
+	workloadName string, containerName string, measurementDur string) map[string][]string {
 	instanceProfile := *p.performanceProfile
 
-	queryNameMap := make(map[string]string) //query: name
+	queryNameMap := make(map[string][]string) //query: name
+	var queryList []string
 
 	for i, fv := range instanceProfile.Slo.Function_variables {
 		for j, af := range fv.Aggregation_functions {
 
 			af.Query = replaceTemplate(fv.Name, af.Function, af.Query, clusterName, namespace, workloadName, containerName, measurementDur)
 			klog.V(9).Info("Updated aggregate function ", j)
-			queryNameMap[af.Query] = fv.Name
+			queryList = append(queryList, af.Query)
+			queryNameMap[fv.Name] = append(queryList, queryList...)
 
 		}
 		klog.V(9).Info("Updated function variable ", i)

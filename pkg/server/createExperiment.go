@@ -108,8 +108,9 @@ func processRequest(req *Request) {
 				klog.V(5).Infof("CreateExperiment %s profile created successfully", experimentName)
 				UpdateQueue <- requestBody
 			}
-		}
 
+		}
+		break
 	}
 
 }

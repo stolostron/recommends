@@ -1,7 +1,6 @@
 package server
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/stolostron/recommends/pkg/config"
@@ -47,7 +46,7 @@ type Metrics struct {
 }
 
 type Result struct {
-	Value           string                `json:"value,omitempty"`
+	Value           *float64              `json:"value,omitempty"`
 	Format          string                `json:"format,omitempty"`
 	AggregationInfo AggregationInfoStruct `json:"aggregation_info"`
 }
@@ -91,8 +90,6 @@ func updateResultRequest(ce *CreateExperiment) {
 			// get metrics from perfprofile queries
 			metrics := kruize.GetMetricsForQuery(queryNameMap)
 
-			klog.Infof("Parse Metrics: %s", metrics.Name)
-
 			//call function to parse the metrics:
 			starttime := time.Now().Unix()
 			updateResult := &UpdateResults{
@@ -131,7 +128,7 @@ func updateResultRequest(ce *CreateExperiment) {
 				},
 			}
 
-			fmt.Println(updateResult)
+			klog.V(5).Info(updateResult)
 		}
 	}
 
