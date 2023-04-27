@@ -46,17 +46,14 @@ type Metrics struct {
 }
 
 type Result struct {
-	Value           *float64              `json:"value,omitempty"`
+	Value           float64               `json:"value,omitempty"`
 	Format          string                `json:"format,omitempty"`
-	AggregationInfo AggregationInfoStruct `json:"aggregation_info"`
+	AggregationInfo AggregationInfoValues `json:"aggregation_info"`
 }
 
-type AggregationInfoStruct struct {
-	Sum    *float64 `json:"sum"`
-	Max    *float64 `json:"max,omitempty"`
-	Min    *float64 `json:"min,omitempty"`
-	Avg    *float64 `json:"avg"`
-	Format string   `json:"format"`
+type AggregationInfoValues struct {
+	AggregationInfo map[string]float64 `json:"aggregation_info"` //ex: "avg": 123.340
+	Format          string             `json:"format"`
 }
 
 func ProcessUpdateQueue(q chan CreateExperiment) {
@@ -69,30 +66,21 @@ func ProcessUpdateQueue(q chan CreateExperiment) {
 }
 
 //updateresults per each experiment
-func updateResultRequest(ce *CreateExperiment) {
+func updateResultRequest(ce *CreateExperiment) UpdateResults {
 
+	var updateResult UpdateResults
 	klog.V(5).Infof("Update Result Experiment: %s\n", ce.ExperimentName)
-
-	// now := time.Now()
-	// val, _ := strconv.Atoi(strings.Split(ce.TrialSettings.MeasurementDuration, "m")[0])
-	// starttime := now.Add(-time.Duration(val) * time.Minute).Unix()
-
 	pm := kruize.NewProfileManager("")
-
-	// var containerMetrics ContainerMetrics
 	for _, kubeobj := range ce.KubernetesObjects {
 		for _, contlist := range kubeobj.Containers {
 
-			// get queries from performanceProfile:
-			queryNameMap := pm.GetPerformanceProfileInstance(ce.ClusterName, kubeobj.Namespace,
+			// get queries from performanceProfile per container:
+			metricsList := pm.GetPerformanceProfileInstanceMetrics(ce.ClusterName, kubeobj.Namespace,
 				kubeobj.Name, contlist.ContainerName, ce.TrialSettings.MeasurementDuration)
-
-			// get metrics from perfprofile queries
-			metrics := kruize.GetMetricsForQuery(queryNameMap)
 
 			//call function to parse the metrics:
 			starttime := time.Now().Unix()
-			updateResult := &UpdateResults{
+			updateResult = &UpdateResults{
 				Version:        ce.Version,
 				ExperimentName: ce.ExperimentName,
 				StartTimestamp: time.Unix(starttime, 0).Format("2006-01-02 15:04:05"), //an hour ago from now
@@ -107,37 +95,21 @@ func updateResultRequest(ce *CreateExperiment) {
 								ContainerImage: contlist.ContainerImage,
 								ContainerName:  contlist.ContainerName,
 								Metrics: []Metrics{
-									{
-										Name: metrics.Name,
-										Results: Result{
-											Value:  metrics.Results.Value,
-											Format: metrics.Results.Format,
-											AggregationInfo: AggregationInfoStruct{
-												Avg:    metrics.Results.AggregationInfo.Avg,
-												Max:    metrics.Results.AggregationInfo.Max,
-												Min:    metrics.Results.AggregationInfo.Min,
-												Sum:    metrics.Results.AggregationInfo.Sum,
-												Format: metrics.Results.Format,
-											},
-										},
-									},
+									metricsList,
 								},
 							},
 						},
 					},
 				},
-			}
-
-			klog.V(5).Info(updateResult)
+			},
+			
 		}
+
 	}
-
-	// UpdateQueue <- updateResult
-
+	return updateResult
 }
 
-func getQueries() {
 
-	// TODO: separate out the functions used in above func
-
-}
+// now := time.Now()
+// val, _ := strconv.Atoi(strings.Split(ce.TrialSettings.MeasurementDuration, "m")[0])
+// starttime := now.Add(-time.Duration(val) * time.Minute).Unix()

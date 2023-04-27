@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/stolostron/recommends/pkg/helpers"
 	"github.com/stolostron/recommends/pkg/model"
-
 	klog "k8s.io/klog/v2"
 )
 
@@ -25,26 +25,54 @@ func NewProfileManager(profile_name string) *profileManager {
 }
 
 //gets perfprof per container and returns query and name map
-func (p *profileManager) GetPerformanceProfileInstance(clusterName string, namespace string,
-	workloadName string, containerName string, measurementDur string) map[string][]string {
+func (p *profileManager) GetPerformanceProfileInstanceMetrics(clusterName string, namespace string,
+	workloadName string, containerName string, measurementDur string) []Metrics {
 	instanceProfile := *p.performanceProfile
+	var metric Metrics
+	var metricsList []Metrics
+	// var aggregationInfoList []map[string]float64
 
-	queryNameMap := make(map[string][]string) //query: name
-	var queryList []string
+	for _, fv := range instanceProfile.Slo.Function_variables {
 
-	for i, fv := range instanceProfile.Slo.Function_variables {
-		for j, af := range fv.Aggregation_functions {
+		var format, function string
+		var value float64
+		aggregateInfo := make(map[string]float64)
+		metric.Name = fv.Name
+
+		if strings.Contains(fv.Name, "cpu") {
+			format = "cores"
+		} else {
+			format = "MiB"
+		}
+
+		for _, af := range fv.Aggregation_functions {
 
 			af.Query = replaceTemplate(fv.Name, af.Function, af.Query, clusterName, namespace, workloadName, containerName, measurementDur)
-			klog.V(9).Info("Updated aggregate function ", j)
-			queryList = append(queryList, af.Query)
-			queryNameMap[fv.Name] = append(queryList, queryList...)
+			value = getResults(af.Query)
+
+			if format == "cores" {
+				value = helpers.ConvertCpuUsageToCores(value)
+			} else {
+				value = helpers.ConvertMemoryUsageToMiB(value)
+			}
+
+			function = af.Function
+
+			aggregateInfo[function] = value
 
 		}
-		klog.V(9).Info("Updated function variable ", i)
+		klog.Info(aggregateInfo)
+
+		metric.Results = Result{Value: value, Format: format, AggregationInfo: AggregationInfoValues{
+			AggregationInfo: aggregateInfo,
+			Format:          format,
+		},
+		}
+
+		metricsList = append(metricsList, metric)
 
 	}
-	return queryNameMap
+	return metricsList
 
 }
 
