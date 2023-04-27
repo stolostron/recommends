@@ -1,10 +1,13 @@
 package server
 
 import (
+	"bytes"
+	"encoding/json"
 	"time"
 
 	"github.com/stolostron/recommends/pkg/config"
 	"github.com/stolostron/recommends/pkg/kruize"
+	"github.com/stolostron/recommends/pkg/utils"
 	"k8s.io/klog"
 )
 
@@ -35,12 +38,12 @@ type KubernetesObjectMetrics struct {
 }
 
 type ContainerMetrics struct {
-	ContainerImage string    `json:"container_image_name"`
-	ContainerName  string    `json:"container_name"`
-	Metrics        []Metrics `json:"metrics"`
+	ContainerImage string   `json:"container_image_name"`
+	ContainerName  string   `json:"container_name"`
+	Metrics        []Metric `json:"metrics"`
 }
 
-type Metrics struct {
+type Metric struct {
 	Name    string `json:"name"`
 	Results Result `json:"results"`
 }
@@ -66,9 +69,9 @@ func ProcessUpdateQueue(q chan CreateExperiment) {
 }
 
 //updateresults per each experiment
-func updateResultRequest(ce *CreateExperiment) UpdateResults {
+func updateResultRequest(ce *CreateExperiment) {
 
-	var updateResult UpdateResults
+	var updateResultBody UpdateResults
 	klog.V(5).Infof("Update Result Experiment: %s\n", ce.ExperimentName)
 	pm := kruize.NewProfileManager("")
 	for _, kubeobj := range ce.KubernetesObjects {
@@ -78,38 +81,77 @@ func updateResultRequest(ce *CreateExperiment) UpdateResults {
 			metricsList := pm.GetPerformanceProfileInstanceMetrics(ce.ClusterName, kubeobj.Namespace,
 				kubeobj.Name, contlist.ContainerName, ce.TrialSettings.MeasurementDuration)
 
-			//call function to parse the metrics:
-			starttime := time.Now().Unix()
-			updateResult = &UpdateResults{
-				Version:        ce.Version,
-				ExperimentName: ce.ExperimentName,
-				StartTimestamp: time.Unix(starttime, 0).Format("2006-01-02 15:04:05"), //an hour ago from now
-				EndTimestamp:   time.Now().Format("2006-01-02 15:04:05"),              //now
-				KubernetesObjects: []KubernetesObjectMetrics{
-					{
-						Type:      "deployment",
-						Name:      kubeobj.Name,
-						Namespace: kubeobj.Namespace,
-						Containers: []ContainerMetrics{
-							{
-								ContainerImage: contlist.ContainerImage,
-								ContainerName:  contlist.ContainerName,
-								Metrics: []Metrics{
-									metricsList,
+			for _, metric := range metricsList {
+				//call function to parse the metrics:
+				updateResultBody = UpdateResults{
+					Version:        ce.Version,
+					ExperimentName: ce.ExperimentName,
+					StartTimestamp: time.Unix(time.Now().Unix(), 0).Format("2006-01-02 15:04:05"), //an hour ago from now
+					EndTimestamp:   time.Now().Format("2006-01-02 15:04:05"),                      //now
+					KubernetesObjects: []KubernetesObjectMetrics{
+						{
+							Type:      "deployment",
+							Name:      kubeobj.Name,
+							Namespace: kubeobj.Namespace,
+							Containers: []ContainerMetrics{
+								{
+									ContainerImage: contlist.ContainerImage,
+									ContainerName:  contlist.ContainerName,
+									Metrics: []Metric{
+										{
+											Name: metric.Name,
+											Results: Result{
+												Value:  metric.Results.Value,
+												Format: metric.Results.Format,
+												AggregationInfo: AggregationInfoValues{
+													AggregationInfo: metric.Results.AggregationInfo.AggregationInfo,
+													Format:          metric.Results.Format,
+												},
+											},
+										},
+									},
 								},
 							},
 						},
 					},
-				},
-			},
-			
+				}
+
+				requestBodies := []UpdateResults{updateResultBody}
+				count := 0
+				err := updateResult(requestBodies)
+				for err != nil && count < config.Cfg.RetryCount {
+					count = count + 1
+					klog.Errorf("Cannot updateResult for createExperiment %s in kruize: Will retry \n", ce.ExperimentName)
+					time.Sleep(time.Duration(config.Cfg.RetryInterval) * time.Millisecond)
+					err = updateResult(requestBodies)
+				}
+				if err == nil {
+					klog.Infof("UpdateResult for experiment %s created successfully", ce.ExperimentName)
+				}
+			}
 		}
 
 	}
-	return updateResult
 }
-
 
 // now := time.Now()
 // val, _ := strconv.Atoi(strings.Split(ce.TrialSettings.MeasurementDuration, "m")[0])
 // starttime := now.Add(-time.Duration(val) * time.Minute).Unix()
+
+func updateResult(requestBodies []UpdateResults) error {
+	requestBodyJSON, err := json.Marshal(requestBodies)
+	if err != nil {
+		klog.Error("Error encoding JSON:", err)
+		return err
+	}
+	client := utils.HTTPClient()
+	klog.V(5).Info("Posting updateResults to Kruize Service", bytes.NewBuffer(requestBodyJSON))
+	res, err := client.Post(update_results_url, "application/json", bytes.NewBuffer(requestBodyJSON))
+	if err != nil {
+		return err
+	} else if res.StatusCode == 201 {
+		return nil
+	}
+	return nil
+
+}

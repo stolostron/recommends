@@ -68,7 +68,6 @@ func processRequest(req *Request) {
 
 	for deployment, containers := range containerMap {
 		for _, con := range containers {
-			singleContainer := []Container{con}
 			experimentName := fmt.Sprintf("%s-%s-%s", req.RequestName, deployment, con.ContainerName)
 			clusterName := strings.Split(req.RequestName, "_")[1]
 			namespace := strings.Split(req.RequestName, "_")[2]
@@ -84,7 +83,7 @@ func processRequest(req *Request) {
 						Type:       "deployment",
 						Name:       deployment,
 						Namespace:  namespace,
-						Containers: singleContainer,
+						Containers: []Container{con},
 					},
 				},
 				TrialSettings: TrialSettings{
@@ -110,7 +109,6 @@ func processRequest(req *Request) {
 			}
 
 		}
-		break
 	}
 
 }
