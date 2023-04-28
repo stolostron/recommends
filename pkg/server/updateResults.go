@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/stolostron/recommends/pkg/config"
-	"github.com/stolostron/recommends/pkg/kruize"
 	"github.com/stolostron/recommends/pkg/utils"
 	"k8s.io/klog"
 )
@@ -73,7 +72,8 @@ func updateResultRequest(ce *CreateExperiment) {
 
 	var updateResultBody UpdateResults
 	klog.V(5).Infof("Update Result Experiment: %s\n", ce.ExperimentName)
-	pm := kruize.NewProfileManager("")
+
+	pm := NewProfileManager("")
 	for _, kubeobj := range ce.KubernetesObjects {
 		for _, contlist := range kubeobj.Containers {
 
@@ -81,62 +81,43 @@ func updateResultRequest(ce *CreateExperiment) {
 			metricsList := pm.GetPerformanceProfileInstanceMetrics(ce.ClusterName, kubeobj.Namespace,
 				kubeobj.Name, contlist.ContainerName, ce.TrialSettings.MeasurementDuration)
 
-			for _, metric := range metricsList {
-				//call function to parse the metrics:
-				updateResultBody = UpdateResults{
-					Version:        ce.Version,
-					ExperimentName: ce.ExperimentName,
-					StartTimestamp: time.Unix(time.Now().Unix(), 0).Format("2006-01-02 15:04:05"), //an hour ago from now
-					EndTimestamp:   time.Now().Format("2006-01-02 15:04:05"),                      //now
-					KubernetesObjects: []KubernetesObjectMetrics{
-						{
-							Type:      "deployment",
-							Name:      kubeobj.Name,
-							Namespace: kubeobj.Namespace,
-							Containers: []ContainerMetrics{
-								{
-									ContainerImage: contlist.ContainerImage,
-									ContainerName:  contlist.ContainerName,
-									Metrics: []Metric{
-										{
-											Name: metric.Name,
-											Results: Result{
-												Value:  metric.Results.Value,
-												Format: metric.Results.Format,
-												AggregationInfo: AggregationInfoValues{
-													AggregationInfo: metric.Results.AggregationInfo.AggregationInfo,
-													Format:          metric.Results.Format,
-												},
-											},
-										},
-									},
-								},
+			updateResultBody = UpdateResults{
+				Version:        ce.Version,
+				ExperimentName: ce.ExperimentName,
+				StartTimestamp: time.Unix(time.Now().Unix(), 0).Format("2006-01-02T15:04:05.000Z"), //an hour ago from now
+				EndTimestamp:   time.Now().Format("2006-01-02T15:04:05.000Z"),                      //now
+				KubernetesObjects: []KubernetesObjectMetrics{
+					{
+						Type:      "deployment",
+						Name:      kubeobj.Name,
+						Namespace: kubeobj.Namespace,
+						Containers: []ContainerMetrics{
+							{
+								ContainerImage: contlist.ContainerImage,
+								ContainerName:  contlist.ContainerName,
+								Metrics:        metricsList,
 							},
 						},
 					},
-				}
+				},
+			}
 
-				requestBodies := []UpdateResults{updateResultBody}
-				count := 0
-				err := updateResult(requestBodies)
-				for err != nil && count < config.Cfg.RetryCount {
-					count = count + 1
-					klog.Errorf("Cannot updateResult for createExperiment %s in kruize: Will retry \n", ce.ExperimentName)
-					time.Sleep(time.Duration(config.Cfg.RetryInterval) * time.Millisecond)
-					err = updateResult(requestBodies)
-				}
-				if err == nil {
-					klog.Infof("UpdateResult for experiment %s created successfully", ce.ExperimentName)
-				}
+			requestBodies := []UpdateResults{updateResultBody}
+
+			count := 0
+			err := updateResult(requestBodies)
+			for err != nil && count < config.Cfg.RetryCount {
+				count = count + 1
+				klog.Errorf("Cannot updateResult for createExperiment %s in kruize: Will retry \n", ce.ExperimentName)
+				time.Sleep(time.Duration(config.Cfg.RetryInterval) * time.Millisecond)
+				err = updateResult(requestBodies)
+			}
+			if err == nil {
+				klog.Infof("UpdateResult for experiment %s created successfully", ce.ExperimentName)
 			}
 		}
-
 	}
 }
-
-// now := time.Now()
-// val, _ := strconv.Atoi(strings.Split(ce.TrialSettings.MeasurementDuration, "m")[0])
-// starttime := now.Add(-time.Duration(val) * time.Minute).Unix()
 
 func updateResult(requestBodies []UpdateResults) error {
 	requestBodyJSON, err := json.Marshal(requestBodies)

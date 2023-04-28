@@ -1,4 +1,4 @@
-package kruize
+package server
 
 import (
 	"encoding/json"
@@ -9,6 +9,7 @@ import (
 
 	"github.com/stolostron/recommends/pkg/helpers"
 	"github.com/stolostron/recommends/pkg/model"
+	"github.com/stolostron/recommends/pkg/prometheus"
 	klog "k8s.io/klog/v2"
 )
 
@@ -26,11 +27,10 @@ func NewProfileManager(profile_name string) *profileManager {
 
 //gets perfprof per container and returns query and name map
 func (p *profileManager) GetPerformanceProfileInstanceMetrics(clusterName string, namespace string,
-	workloadName string, containerName string, measurementDur string) []Metrics {
+	workloadName string, containerName string, measurementDur string) []Metric {
 	instanceProfile := *p.performanceProfile
-	var metric Metrics
-	var metricsList []Metrics
-	// var aggregationInfoList []map[string]float64
+	var metric Metric
+	var metricsList []Metric
 
 	for _, fv := range instanceProfile.Slo.Function_variables {
 
@@ -48,7 +48,7 @@ func (p *profileManager) GetPerformanceProfileInstanceMetrics(clusterName string
 		for _, af := range fv.Aggregation_functions {
 
 			af.Query = replaceTemplate(fv.Name, af.Function, af.Query, clusterName, namespace, workloadName, containerName, measurementDur)
-			value = getResults(af.Query)
+			value = prometheus.GetResults(af.Query)
 
 			if format == "cores" {
 				value = helpers.ConvertCpuUsageToCores(value)
@@ -61,7 +61,6 @@ func (p *profileManager) GetPerformanceProfileInstanceMetrics(clusterName string
 			aggregateInfo[function] = value
 
 		}
-		klog.Info(aggregateInfo)
 
 		metric.Results = Result{Value: value, Format: format, AggregationInfo: AggregationInfoValues{
 			AggregationInfo: aggregateInfo,
