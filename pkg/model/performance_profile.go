@@ -33,3 +33,25 @@ type Aggregation_function struct {
 type obj_function struct {
 	Function_type string `json:"function_type"`
 }
+
+type KubernetesObjectMetrics struct {
+	Type       string             `json:"type"`
+	Name       string             `json:"name"`
+	Namespace  string             `json:"namespace"`
+	Containers []ContainerMetrics `json:"containers"`
+}
+
+type ContainerMetrics struct {
+	ContainerImage string    `json:"container_image_name"`
+	ContainerName  string    `json:"container_name"`
+	Metrics        []Metrics `json:"metrics"`
+}
+
+type Metrics struct {
+	Name    string `json:"name"`
+	Results Result `json:"results"`
+}
+
+type Result struct {
+	AggregationInfo map[string]interface{} `json:"aggregation_info"`
+}

@@ -11,7 +11,7 @@ import (
 	"github.com/golang/gddo/httputil/header"
 	"github.com/stolostron/recommends/pkg/helpers"
 	"github.com/stolostron/recommends/pkg/prometheus"
-	"k8s.io/klog"
+	klog "k8s.io/klog/v2"
 )
 
 var CreateQueue chan Request

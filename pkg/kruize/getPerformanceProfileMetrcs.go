@@ -13,10 +13,10 @@ import (
 	klog "k8s.io/klog/v2"
 )
 
-type Metrics struct {
+/*type Metrics struct {
 	Name    string `json:"name"`
 	Results Result `json:"results"`
-}
+}*/
 
 type Result struct {
 	Value           float64               `json:"value,omitempty"`

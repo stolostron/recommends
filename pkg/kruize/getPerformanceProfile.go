@@ -26,17 +26,17 @@ func NewProfileManager(profile_name string) *profileManager {
 
 //gets perfprof per container and returns query and name map
 func (p *profileManager) GetPerformanceProfileInstanceMetrics(clusterName string, namespace string,
-	workloadName string, containerName string, measurementDur string) []Metrics {
+	workloadName string, containerName string, measurementDur string) []model.Metrics {
 	instanceProfile := *p.performanceProfile
-	var metric Metrics
-	var metricsList []Metrics
+	var metric model.Metrics
+	var metricsList []model.Metrics
 	// var aggregationInfoList []map[string]float64
-
+	measurementDur = strings.TrimSuffix(measurementDur, "in")
 	for _, fv := range instanceProfile.Slo.Function_variables {
 
 		var format, function string
 		var value float64
-		aggregateInfo := make(map[string]float64)
+		aggregateInfo := make(map[string]interface{})
 		metric.Name = fv.Name
 
 		if strings.Contains(fv.Name, "cpu") {
@@ -44,7 +44,7 @@ func (p *profileManager) GetPerformanceProfileInstanceMetrics(clusterName string
 		} else {
 			format = "MiB"
 		}
-
+		aggregateInfo["format"] = format
 		for _, af := range fv.Aggregation_functions {
 
 			af.Query = replaceTemplate(fv.Name, af.Function, af.Query, clusterName, namespace, workloadName, containerName, measurementDur)
@@ -63,11 +63,7 @@ func (p *profileManager) GetPerformanceProfileInstanceMetrics(clusterName string
 		}
 		klog.Info(aggregateInfo)
 
-		metric.Results = Result{Value: value, Format: format, AggregationInfo: AggregationInfoValues{
-			AggregationInfo: aggregateInfo,
-			Format:          format,
-		},
-		}
+		metric.Results = model.Result{AggregationInfo: aggregateInfo}
 
 		metricsList = append(metricsList, metric)
 
