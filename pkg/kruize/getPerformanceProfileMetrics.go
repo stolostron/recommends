@@ -13,17 +13,6 @@ import (
 	klog "k8s.io/klog/v2"
 )
 
-type Result struct {
-	Value           float64               `json:"value,omitempty"`
-	Format          string                `json:"format"`
-	AggregationInfo AggregationInfoValues `json:"aggregation_info"`
-}
-
-type AggregationInfoValues struct {
-	AggregationInfo map[string]float64 `json:"aggregation_info"` //ex: "avg": 123.340
-	Format          string             `json:"format"`
-}
-
 /* Given a prometheus query returns the reult as float64 */
 func getResults(query string) float64 {
 	var value float64
