@@ -11,7 +11,7 @@ import (
 	"github.com/stolostron/recommends/pkg/config"
 	"github.com/stolostron/recommends/pkg/helpers"
 	"github.com/stolostron/recommends/pkg/utils"
-	"k8s.io/klog"
+	klog "k8s.io/klog/v2"
 )
 
 //reads in the values from computeRecommendations and prometheus
@@ -62,7 +62,7 @@ func processRequest(req *Request) {
 	for deployment, containerData := range req.Workloads {
 		containerDataClean = helpers.RemoveDuplicate(containerData)
 		for _, contData := range containerDataClean {
-			containerMap[deployment] = append(containerMap[deployment], Container{ContainerName: contData})
+			containerMap[deployment] = append(containerMap[deployment], Container{ContainerImage: contData, ContainerName: contData})
 		}
 	}
 
@@ -87,7 +87,7 @@ func processRequest(req *Request) {
 					},
 				},
 				TrialSettings: TrialSettings{
-					MeasurementDuration: "60m",
+					MeasurementDuration: "60min",
 				},
 				RecommendationSettings: RecommendationSettings{
 					Threshold: "0.1",

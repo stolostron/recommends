@@ -1,4 +1,4 @@
-package prometheus
+package kruize
 
 import (
 	"context"
@@ -13,7 +13,23 @@ import (
 	klog "k8s.io/klog/v2"
 )
 
-func GetResults(query string) float64 {
+/*type Metrics struct {
+	Name    string `json:"name"`
+	Results Result `json:"results"`
+}*/
+
+type Result struct {
+	Value           float64               `json:"value,omitempty"`
+	Format          string                `json:"format"`
+	AggregationInfo AggregationInfoValues `json:"aggregation_info"`
+}
+
+type AggregationInfoValues struct {
+	AggregationInfo map[string]float64 `json:"aggregation_info"` //ex: "avg": 123.340
+	Format          string             `json:"format"`
+}
+
+func getResults(query string) float64 {
 	var value float64
 	//setup context with a timeout to avoid blocking
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
