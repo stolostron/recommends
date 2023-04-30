@@ -6,7 +6,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/stolostron/recommends/pkg/config"
 	"github.com/stolostron/recommends/pkg/kruize"
 	"github.com/stolostron/recommends/pkg/model"
 	klog "k8s.io/klog/v2"
@@ -26,10 +25,7 @@ func init() {
 	UpdateQueue = make(chan CreateExperiment)
 }
 
-//gets values from getPerformanceProfileMetrics passed to it
-//and passes them as request to updateResults kruize
-
-var update_results_url = config.Cfg.KruizeURL + "/updateResults"
+//var update_results_url = config.Cfg.KruizeURL + "/updateResults"
 
 func ProcessUpdateQueue(q chan CreateExperiment) {
 	for {
