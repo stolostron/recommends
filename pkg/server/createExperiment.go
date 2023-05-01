@@ -52,7 +52,7 @@ type RecommendationSettings struct {
 }
 
 func processRequest(req *Request) {
-	klog.Infof("Processing Request ..%d", len(req.Workloads))
+	klog.Infof("Processing Request %s", len(req.RequestName))
 	var requestBody CreateExperiment
 	var containerDataClean []string
 
@@ -110,6 +110,7 @@ func processRequest(req *Request) {
 			}
 
 		}
+		// TODO Remove this block to iterate all Containers .
 		break
 	}
 

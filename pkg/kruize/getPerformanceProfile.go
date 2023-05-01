@@ -24,18 +24,34 @@ func NewProfileManager(profile_name string) *profileManager {
 	return pm
 }
 
-//gets perfprof per container and returns query and name map
+//gets perfprof per container from Thanos and returns array of metrics
 func (p *profileManager) GetPerformanceProfileInstanceMetrics(clusterName string, namespace string,
 	workloadName string, containerName string, measurementDur string) []model.Metrics {
 	instanceProfile := *p.performanceProfile
 	var metric model.Metrics
 	var metricsList []model.Metrics
-	// var aggregationInfoList []map[string]float64
 	measurementDur = strings.TrimSuffix(measurementDur, "in")
+	/* Iterate the following json object to form the Metrics object
+		        "function_variables": [
+	            {
+	                "name": "cpuRequest",
+	                "datasource": "prometheus",
+	                "value_type": "double",
+	                "kubernetes_object": "container",
+	                "aggregation_functions": [
+	                    {
+	                        "function": "avg",
+	                        "query": "avg(kube_pod_container_resource_requests{cluster=\"$CLUSTER_NAME$\",namespace=\"$NAMESPACE$\",pod=~\"$WORKLOAD_NAME$-[^-]*-[^-]*\",container=\"$CONTAINER_NAME$\"})"
+	                    },
+	                    {
+	                        "function": "sum",
+	                        "query": "sum(kube_pod_container_resource_requests{cluster=\"$CLUSTER_NAME$\",namespace=\"$NAMESPACE$\",pod=~\"$WORKLOAD_NAME$-[^-]*-[^-]*\",container=\"$CONTAINER_NAME$\"})"
+	                    }
+	                ]
+	            },
+	*/
 	for _, fv := range instanceProfile.Slo.Function_variables {
-
 		var format, function string
-		var value float64
 		aggregateInfo := make(map[string]interface{})
 		metric.Name = fv.Name
 
@@ -46,30 +62,25 @@ func (p *profileManager) GetPerformanceProfileInstanceMetrics(clusterName string
 		}
 		aggregateInfo["format"] = format
 		for _, af := range fv.Aggregation_functions {
-
 			af.Query = replaceTemplate(fv.Name, af.Function, af.Query, clusterName, namespace, workloadName, containerName, measurementDur)
-			value = getResults(af.Query)
-
+			value, err := getResults(af.Query)
+			if err != nil {
+				klog.V(5).Infof("Error running query %s", af.Query)
+				continue
+			}
 			if format == "cores" {
 				value = helpers.ConvertCpuUsageToCores(value)
 			} else {
 				value = helpers.ConvertMemoryUsageToMiB(value)
 			}
-
 			function = af.Function
-
 			aggregateInfo[function] = value
-
 		}
-		klog.Info(aggregateInfo)
-
+		klog.V(9).Info(aggregateInfo)
 		metric.Results = model.Result{AggregationInfo: aggregateInfo}
-
 		metricsList = append(metricsList, metric)
-
 	}
 	return metricsList
-
 }
 
 func replaceTemplate(name string, function string, query string, clusterName string, namespace string,
