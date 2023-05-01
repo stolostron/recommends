@@ -31,7 +31,7 @@ func ProcessUpdateQueue(q chan CreateExperiment) {
 	for {
 		klog.Info("Processing update Q")
 		ce := <-q
-		updateResultRequest(&ce)
+		go updateResultRequest(&ce)
 		klog.Infof("Processed %s", ce.ExperimentName)
 	}
 }
