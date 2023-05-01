@@ -2,6 +2,7 @@ package kruize
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -26,7 +27,7 @@ func NewProfileManager(profile_name string) *profileManager {
 
 //gets perfprof per container and returns query and name map
 func (p *profileManager) GetPerformanceProfileInstanceMetrics(clusterName string, namespace string,
-	workloadName string, containerName string, measurementDur string) []model.Metrics {
+	workloadName string, containerName string, measurementDur string, unixTime int64) []model.Metrics {
 	instanceProfile := *p.performanceProfile
 	var metric model.Metrics
 	var metricsList []model.Metrics
@@ -47,7 +48,7 @@ func (p *profileManager) GetPerformanceProfileInstanceMetrics(clusterName string
 		aggregateInfo["format"] = format
 		for _, af := range fv.Aggregation_functions {
 
-			af.Query = replaceTemplate(fv.Name, af.Function, af.Query, clusterName, namespace, workloadName, containerName, measurementDur)
+			af.Query = replaceTemplate(fv.Name, af.Function, af.Query, clusterName, namespace, workloadName, containerName, measurementDur, unixTime)
 			value = getResults(af.Query)
 
 			if format == "cores" {
@@ -73,7 +74,7 @@ func (p *profileManager) GetPerformanceProfileInstanceMetrics(clusterName string
 }
 
 func replaceTemplate(name string, function string, query string, clusterName string, namespace string,
-	workloadName string, containerName string, measurementDur string) string {
+	workloadName string, containerName string, measurementDur string, unixTime int64) string {
 
 	klog.V(8).Infof("Template Query " + query)
 	query = strings.ReplaceAll(query, "$CLUSTER_NAME$", clusterName)
@@ -81,6 +82,7 @@ func replaceTemplate(name string, function string, query string, clusterName str
 	query = strings.ReplaceAll(query, "$WORKLOAD_NAME$", workloadName)
 	query = strings.ReplaceAll(query, "$CONTAINER_NAME$", containerName)
 	query = strings.ReplaceAll(query, "$MEASUREMENT_DURATION$", measurementDur)
+	query = strings.ReplaceAll(query, "$UNIX_TIME$", fmt.Sprint(unixTime))
 	klog.V(8).Infof("Instance Query " + query)
 
 	return query

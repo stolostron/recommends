@@ -1,19 +1,22 @@
 package helpers
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
+	"crypto/rand"
 	"fmt"
+	"math/big"
+
+	"k8s.io/klog/v2"
 )
 
-func GenerateID(object interface{}) string {
+func GenerateID() string {
 
-	objectString := fmt.Sprintf("%v", object)
-	hash := sha256.Sum256([]byte(objectString))
-
-	hexString := hex.EncodeToString(hash[:])
-
-	return hexString
+	max := big.NewInt(999099)
+	valBig, err := rand.Int(rand.Reader, max)
+	if err != nil {
+		klog.Warning("Error generating RequestID.")
+		return fmt.Sprint(0)
+	}
+	return fmt.Sprint(valBig.Int64())
 }
 
 func RemoveDuplicate(strSlice []string) []string {
