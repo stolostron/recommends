@@ -28,12 +28,12 @@ func RemoveDuplicate(strSlice []string) []string {
 	return list
 }
 
+// Convert CPU usage from millicores to cores
 func ConvertCpuUsageToCores(millicpu float64) float64 {
-	// Convert CPU usage from millicores to cores
 	return millicpu * 1000.0
 }
 
+// Convert memory usage from bytes to Mebibytes (MiB)
 func ConvertMemoryUsageToMiB(bytes float64) float64 {
-	// Convert memory usage from bytes to Mebibytes (MiB)
 	return bytes / 1024.0 / 1024.0
 }

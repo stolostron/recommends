@@ -52,7 +52,7 @@ type RecommendationSettings struct {
 }
 
 func processRequest(req *Request) {
-	klog.Infof("Processing Request %s", len(req.RequestName))
+	klog.Infof("Processing Request %s", req.RequestName)
 	var requestBody CreateExperiment
 	var containerDataClean []string
 
@@ -111,7 +111,7 @@ func processRequest(req *Request) {
 
 		}
 	}
-
+	klog.V(5).Infof("Processed %s", req.RequestName)
 }
 
 func createExperiment(requestBodies []CreateExperiment, context context.Context) error {
@@ -136,7 +136,6 @@ func ProcessCreateQueue(q chan Request) {
 	for {
 		klog.V(5).Info("Processing create Q")
 		req := <-q
-		processRequest(&req)
-		klog.V(5).Infof("Processed %s", req.RequestName)
+		go processRequest(&req)
 	}
 }

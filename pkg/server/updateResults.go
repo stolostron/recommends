@@ -32,7 +32,6 @@ func ProcessUpdateQueue(q chan CreateExperiment) {
 		klog.Info("Processing update Q")
 		ce := <-q
 		go updateResultRequest(&ce)
-		klog.Infof("Processed %s", ce.ExperimentName)
 	}
 }
 
@@ -82,6 +81,7 @@ func updateResultRequest(ce *CreateExperiment) UpdateResults {
 
 	}
 	up, _ := json.Marshal(updateResults)
+	klog.Infof("Processed %s", ce.ExperimentName)
 	klog.V(9).Infof("Created updateResults Object %v", string(up))
 	return updateResult
 }

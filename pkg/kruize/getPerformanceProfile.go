@@ -122,6 +122,6 @@ func getPerformanceProfile(profileName string) (model.Perf_profile, bool) {
 		klog.Errorf("Error reading performance profile %s : %v \n", profileName, err)
 		return result, false
 	}
-	klog.Info(len(result.Slo.Function_variables))
+	klog.Infof("SLO.Function_variables: %d", len(result.Slo.Function_variables))
 	return result, true
 }
