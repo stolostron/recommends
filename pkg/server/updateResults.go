@@ -125,9 +125,5 @@ func getTimeWindows(days int, windowSize int) []time.Time {
 		startTime = startTime.Add(time.Duration(windowSize) * time.Minute)
 		windows = append(windows, startTime)
 	}
-	if len(windows)%2 != 0 {
-		klog.Errorf("Error computing Windows , unexpected length %v", windows)
-		windows = windows[:len(windows)-1]
-	}
 	return windows
 }
