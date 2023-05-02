@@ -110,8 +110,6 @@ func processRequest(req *Request) {
 			}
 
 		}
-		// TODO Remove this block to iterate all Containers .
-		break
 	}
 
 }
