@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -10,8 +11,14 @@ import (
 	"github.com/golang/gddo/httputil/header"
 	"github.com/stolostron/recommends/pkg/helpers"
 	"github.com/stolostron/recommends/pkg/prometheus"
-	"k8s.io/klog"
+	klog "k8s.io/klog/v2"
 )
+
+var CreateQueue chan Request
+
+func init() {
+	CreateQueue = make(chan Request)
+}
 
 type recommendation []struct {
 	ClusterName         string `json:"clusterName"`
@@ -20,9 +27,15 @@ type recommendation []struct {
 	MeasurementDuration string `json:"measurement_duration"` //ex: "15min"
 }
 
-// prepares recommendation request
-func computeRecommendations(w http.ResponseWriter, r *http.Request) {
+type Request struct {
+	RequestName    string
+	Workloads      map[string][]string
+	RequestContext context.Context
+}
 
+// API implementation for /computeRecommendations
+func computeRecommendations(w http.ResponseWriter, r *http.Request) {
+	klog.V(5).Infof("Received Request for compute Recommendations")
 	var newRecommendation recommendation
 	requestIdMap := make(map[string]string) //ex: clustername-namespace:"id-12345"
 	var requestName string
@@ -96,14 +109,11 @@ func computeRecommendations(w http.ResponseWriter, r *http.Request) {
 
 	//createExperiment with data:
 	if err == nil {
-		LoadValues(requestName, deployments, context)
+		CreateQueue <- Request{RequestName: requestName, Workloads: deployments, RequestContext: context}
 	} else {
 		klog.Errorf("Error getting deployment and container labels from prometheus: %s", err)
 		return
 	}
-	//TODO: decide if we need this
-	//append to recommendations list temporary store in memory
-	//recommendations = append(recommendations, newRecommendation...)
 
 	msg := fmt.Sprintf("Recommendation for cluster %s namespace %s   successfully submitted with recommendation Id %s", clusterName, nameSpace, requestName)
 	_, err = w.Write([]byte(msg))

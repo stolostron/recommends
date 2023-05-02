@@ -5,12 +5,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/stolostron/recommends/pkg/config"
 	"github.com/stolostron/recommends/pkg/helpers"
 	"github.com/stolostron/recommends/pkg/utils"
-	"k8s.io/klog"
+	klog "k8s.io/klog/v2"
 )
 
 //reads in the values from computeRecommendations and prometheus
@@ -50,33 +51,31 @@ type RecommendationSettings struct {
 	Threshold string `json:"threshold"`
 }
 
-func LoadValues(requestName string, deployments map[string][]string, context context.Context) {
-
-	var reqBody CreateExperiment
-	var kubeObj KubernetesObject
-	var containerDataClean []string
+func processRequest(req *Request) {
+	klog.Infof("Processing Request %s", req.RequestName)
 	var requestBody CreateExperiment
+	var containerDataClean []string
 
 	containerMap := make(map[string][]Container)
 
 	//get containers
-	for deployment, containerData := range deployments {
+	for deployment, containerData := range req.Workloads {
 		containerDataClean = helpers.RemoveDuplicate(containerData)
 		for _, contData := range containerDataClean {
-			containerMap[deployment] = append(containerMap[deployment], Container{ContainerName: contData})
+			containerMap[deployment] = append(containerMap[deployment], Container{ContainerImage: contData, ContainerName: contData})
 		}
 	}
 
 	for deployment, containers := range containerMap {
 		for _, con := range containers {
 			singleContainer := []Container{con}
-			experimentName := fmt.Sprintf("%s-%s-%s", requestName, deployment, con.ContainerName)
-
-			//parse deployment data
+			experimentName := fmt.Sprintf("%s-%s-%s", req.RequestName, deployment, con.ContainerName)
+			clusterName := strings.Split(req.RequestName, "_")[1]
+			namespace := strings.Split(req.RequestName, "_")[2]
 			requestBody = CreateExperiment{
 				Version:            "1.0",
 				ExperimentName:     experimentName,
-				ClusterName:        reqBody.ClusterName,
+				ClusterName:        clusterName,
 				PerformanceProfile: "resource-optimization-acm",
 				Mode:               "monitor",
 				TargetCluster:      "remote",
@@ -84,7 +83,7 @@ func LoadValues(requestName string, deployments map[string][]string, context con
 					{
 						Type:       "deployment",
 						Name:       deployment,
-						Namespace:  kubeObj.Namespace,
+						Namespace:  namespace,
 						Containers: singleContainer,
 					},
 				},
@@ -98,21 +97,21 @@ func LoadValues(requestName string, deployments map[string][]string, context con
 
 			requestBodies := []CreateExperiment{requestBody}
 			count := 0
-			err := createExperiment(requestBodies, context)
+			err := createExperiment(requestBodies, req.RequestContext)
 			for err != nil && count < config.Cfg.RetryCount {
 				count = count + 1
 				klog.Errorf("Cannot create createExperiment %s in kruize: Will retry \n", experimentName)
 				time.Sleep(time.Duration(config.Cfg.RetryInterval) * time.Millisecond)
-				err = createExperiment(requestBodies, context)
+				err = createExperiment(requestBodies, req.RequestContext)
 			}
-			if err != nil {
-				klog.Infof("CreateExperiment %s profile created successfully", experimentName)
+			if err == nil {
+				klog.V(5).Infof("CreateExperiment %s profile created successfully", experimentName)
+				UpdateQueue <- requestBody
 			}
 
 		}
-
 	}
-
+	klog.V(5).Infof("Processed %s", req.RequestName)
 }
 
 func createExperiment(requestBodies []CreateExperiment, context context.Context) error {
@@ -123,7 +122,7 @@ func createExperiment(requestBodies []CreateExperiment, context context.Context)
 		return err
 	}
 	client := utils.HTTPClient()
-	klog.Info("Posting create Experiment to Kruize Service", bytes.NewBuffer(requestBodyJSON))
+	klog.V(5).Info("Posting create Experiment to Kruize Service", bytes.NewBuffer(requestBodyJSON))
 	res, err := client.Post(create_experiment_url, "application/json", bytes.NewBuffer(requestBodyJSON))
 	if err != nil {
 		return err
@@ -132,4 +131,11 @@ func createExperiment(requestBodies []CreateExperiment, context context.Context)
 	}
 	return nil
 
+}
+func ProcessCreateQueue(q chan Request) {
+	for {
+		klog.V(5).Info("Processing create Q")
+		req := <-q
+		go processRequest(&req)
+	}
 }

@@ -42,7 +42,8 @@ func main() {
 		}
 
 	}
-	pm := kruize.NewProfileManager("")
-	pm.GetPerformanceProfileInstance("x-man1", "ocm", "search-postgres", "search-postgres-container")
+
+	go server.ProcessCreateQueue(server.CreateQueue)
+	go server.ProcessUpdateQueue(server.UpdateQueue)
 	server.StartAndListen()
 }

@@ -10,7 +10,7 @@ import (
 	promv1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	"github.com/prometheus/common/model"
 	"github.com/stolostron/recommends/pkg/config"
-	"k8s.io/klog"
+	klog "k8s.io/klog/v2"
 )
 
 type Result struct {
