@@ -34,8 +34,7 @@ func ProcessUpdateQueue(q chan CreateExperiment) {
 	for {
 		klog.Info("Processing update Q")
 		ce := <-q
-		updateResultRequest(&ce)
-		klog.Infof("Processed %s", ce.ExperimentName)
+		go updateResultRequest(&ce)
 	}
 }
 
@@ -58,7 +57,6 @@ func updateResultRequest(ce *CreateExperiment) {
 				startTime := endTimes[i-1]
 				endTime := endTimes[i]
 				unixTime := endTime.Unix()
-				klog.Info("Unixtime %v", unixTime)
 				// get queries from performanceProfile per container:
 				metricsList := pm.GetPerformanceProfileInstanceMetrics(ce.ClusterName, kubeobj.Namespace,
 					kubeobj.Name, contlist.ContainerName, ce.TrialSettings.MeasurementDuration, unixTime)
@@ -84,8 +82,8 @@ func updateResultRequest(ce *CreateExperiment) {
 					},
 				}
 				updateResults = []UpdateResults{updateResult}
-				up, _ := json.Marshal(updateResults)
-				klog.V(9).Infof("Created updateResults Object %v", string(up))
+				upJson, _ := json.Marshal(updateResults)
+				klog.V(9).Infof("Created updateResults Object %v", string(upJson))
 				postUpdateResult(updateResults)
 				time.Sleep(1 * time.Millisecond)
 			}
@@ -104,12 +102,12 @@ func postUpdateResult(updateResults []UpdateResults) error {
 		return err
 	}
 	client := utils.HTTPClient()
-	klog.V(5).Info("Posting updateResult to Kruize Service", bytes.NewBuffer(requestBodyJSON))
+	klog.V(9).Infof("Posting updateResult to Kruize Service %v", bytes.NewBuffer(requestBodyJSON))
 	res, err := client.Post(update_results_url, "application/json", bytes.NewBuffer(requestBodyJSON))
 	if err != nil {
 		return err
 	} else if res.StatusCode == 201 {
-		klog.V(5).Info("Successful updateResults reqest for request %s , startTime: %s , endTime: %s", updateResults[0].ExperimentName, updateResults[0].StartTimestamp, updateResults[0].ExperimentName, updateResults[0].EndTimestamp)
+		klog.V(5).Infof("Successful updateResults reqest for request %s , startTime: %s , endTime:%s", updateResults[0].ExperimentName, updateResults[0].StartTimestamp, updateResults[0].EndTimestamp)
 		return nil
 	}
 	return nil
@@ -119,8 +117,8 @@ func postUpdateResult(updateResults []UpdateResults) error {
 func getTimeWindows(days int, windowSize int) []time.Time {
 	var windows []time.Time
 	currentTime := time.Now()                  // To Do : we should get the time from the input
-	startTime := currentTime.AddDate(0, 0, -2) // Goback to one day
-	startTime = startTime.Add(-time.Hour * 1)  // Kruize needs 24 + 1 data points
+	startTime := currentTime.AddDate(0, 0, -1) // Goback to one day
+	startTime = startTime.Add(-time.Hour * 2)  // Kruize needs 24 + 2 data points
 	windows = append(windows, startTime)
 
 	for currentTime.After(startTime) {
