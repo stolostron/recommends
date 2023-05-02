@@ -119,7 +119,7 @@ func postUpdateResult(updateResults []UpdateResults) error {
 func getTimeWindows(days int, windowSize int) []time.Time {
 	var windows []time.Time
 	currentTime := time.Now()                  // To Do : we should get the time from the input
-	startTime := currentTime.AddDate(0, 0, -1) // Goback to one day
+	startTime := currentTime.AddDate(0, 0, -2) // Goback to one day
 	startTime = startTime.Add(-time.Hour * 1)  // Kruize needs 24 + 1 data points
 	windows = append(windows, startTime)
 
