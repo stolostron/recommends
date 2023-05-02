@@ -84,16 +84,21 @@ func updateResultRequest(ce *CreateExperiment) {
 				updateResults = []UpdateResults{updateResult}
 				upJson, _ := json.Marshal(updateResults)
 				klog.V(9).Infof("Created updateResults Object %v", string(upJson))
-				postUpdateResult(updateResults)
-				time.Sleep(1 * time.Millisecond)
+				err := postUpdateResult(updateResults)
+				count := 0
+				for err != nil && count < config.Cfg.RetryCount {
+					count = count + 1
+					klog.Errorf("Cannot post updateResult %s in kruize: Will retry \n", ce.ExperimentName)
+					time.Sleep(time.Duration(config.Cfg.RetryInterval) * time.Millisecond)
+					err = postUpdateResult(updateResults)
+				}
+
 			}
 
 		}
 
 	}
-
 }
-
 func postUpdateResult(updateResults []UpdateResults) error {
 	//post updateResults request to kruize
 	requestBodyJSON, err := json.Marshal(updateResults)
