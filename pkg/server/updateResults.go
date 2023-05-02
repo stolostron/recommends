@@ -1,79 +1,49 @@
 package server
 
 import (
-	"bytes"
 	"encoding/json"
+	"strconv"
+	"strings"
 	"time"
 
-	"github.com/stolostron/recommends/pkg/config"
-	"github.com/stolostron/recommends/pkg/utils"
-	"k8s.io/klog"
+	"github.com/stolostron/recommends/pkg/kruize"
+	"github.com/stolostron/recommends/pkg/model"
+	klog "k8s.io/klog/v2"
 )
 
 var UpdateQueue chan CreateExperiment
+
+type UpdateResults struct {
+	Version           string                          `json:"version"`
+	ExperimentName    string                          `json:"experiment_name"`
+	StartTimestamp    string                          `json:"interval_start_time"`
+	EndTimestamp      string                          `json:"interval_end_time"`
+	KubernetesObjects []model.KubernetesObjectMetrics `json:"kubernetes_objects"`
+}
 
 func init() {
 	UpdateQueue = make(chan CreateExperiment)
 }
 
-//gets values from getPerformanceProfileMetrics passed to it
-//and passes them as request to updateResults kruize
-
-var update_results_url = config.Cfg.KruizeURL + "/updateResults"
-
-type UpdateResults struct {
-	Version           string                    `json:"version"`
-	ExperimentName    string                    `json:"experiment_name"`
-	StartTimestamp    string                    `json:"start_timestamp"`
-	EndTimestamp      string                    `json:"end_timestamp"`
-	KubernetesObjects []KubernetesObjectMetrics `json:"kubernetes_objects"`
-}
-
-type KubernetesObjectMetrics struct {
-	Type       string             `json:"type"`
-	Name       string             `json:"name"`
-	Namespace  string             `json:"namespace"`
-	Containers []ContainerMetrics `json:"containers"`
-}
-
-type ContainerMetrics struct {
-	ContainerImage string   `json:"container_image_name"`
-	ContainerName  string   `json:"container_name"`
-	Metrics        []Metric `json:"metrics"`
-}
-
-type Metric struct {
-	Name    string `json:"name"`
-	Results Result `json:"results"`
-}
-
-type Result struct {
-	Value           float64               `json:"value,omitempty"`
-	Format          string                `json:"format,omitempty"`
-	AggregationInfo AggregationInfoValues `json:"aggregation_info"`
-}
-
-type AggregationInfoValues struct {
-	AggregationInfo map[string]float64 `json:"aggregation_info"` //ex: "avg": 123.340
-	Format          string             `json:"format"`
-}
+//var update_results_url = config.Cfg.KruizeURL + "/updateResults"
 
 func ProcessUpdateQueue(q chan CreateExperiment) {
 	for {
 		klog.Info("Processing update Q")
 		ce := <-q
-		updateResultRequest(&ce)
+		go updateResultRequest(&ce)
 		klog.Infof("Processed %s", ce.ExperimentName)
 	}
 }
 
 //updateresults per each experiment
-func updateResultRequest(ce *CreateExperiment) {
+func updateResultRequest(ce *CreateExperiment) UpdateResults {
 
-	var updateResultBody UpdateResults
+	var updateResult UpdateResults
+	var updateResults []UpdateResults
+
 	klog.V(5).Infof("Update Result Experiment: %s\n", ce.ExperimentName)
-
-	pm := NewProfileManager("")
+	pm := kruize.NewProfileManager("")
 	for _, kubeobj := range ce.KubernetesObjects {
 		for _, contlist := range kubeobj.Containers {
 
@@ -81,17 +51,22 @@ func updateResultRequest(ce *CreateExperiment) {
 			metricsList := pm.GetPerformanceProfileInstanceMetrics(ce.ClusterName, kubeobj.Namespace,
 				kubeobj.Name, contlist.ContainerName, ce.TrialSettings.MeasurementDuration)
 
-			updateResultBody = UpdateResults{
+			//call function to parse the metrics:
+			windowSizeStr := strings.TrimSuffix(ce.TrialSettings.MeasurementDuration, "min")
+			windowSizeInt, _ := strconv.ParseInt(windowSizeStr, 10, 64)
+			startTime := time.Now()
+			endTime := startTime.Add(time.Duration(windowSizeInt) * time.Minute)
+			updateResult = UpdateResults{
 				Version:        ce.Version,
 				ExperimentName: ce.ExperimentName,
-				StartTimestamp: time.Unix(time.Now().Unix(), 0).Format("2006-01-02T15:04:05.000Z"), //an hour ago from now
-				EndTimestamp:   time.Now().Format("2006-01-02T15:04:05.000Z"),                      //now
-				KubernetesObjects: []KubernetesObjectMetrics{
+				StartTimestamp: startTime.Format("2006-01-02T15:04:05.000Z"), //an hour ago from now
+				EndTimestamp:   endTime.Format("2006-01-02T15:04:05.000Z"),   //now
+				KubernetesObjects: []model.KubernetesObjectMetrics{
 					{
 						Type:      "deployment",
 						Name:      kubeobj.Name,
 						Namespace: kubeobj.Namespace,
-						Containers: []ContainerMetrics{
+						Containers: []model.ContainerMetrics{
 							{
 								ContainerImage: contlist.ContainerImage,
 								ContainerName:  contlist.ContainerName,
@@ -101,38 +76,12 @@ func updateResultRequest(ce *CreateExperiment) {
 					},
 				},
 			}
+			updateResults = append(updateResults, updateResult)
 
-			requestBodies := []UpdateResults{updateResultBody}
-
-			count := 0
-			err := updateResult(requestBodies)
-			for err != nil && count < config.Cfg.RetryCount {
-				count = count + 1
-				klog.Errorf("Cannot updateResult for createExperiment %s in kruize: Will retry \n", ce.ExperimentName)
-				time.Sleep(time.Duration(config.Cfg.RetryInterval) * time.Millisecond)
-				err = updateResult(requestBodies)
-			}
-			if err == nil {
-				klog.Infof("UpdateResult for experiment %s created successfully", ce.ExperimentName)
-			}
 		}
-	}
-}
 
-func updateResult(requestBodies []UpdateResults) error {
-	requestBodyJSON, err := json.Marshal(requestBodies)
-	if err != nil {
-		klog.Error("Error encoding JSON:", err)
-		return err
 	}
-	client := utils.HTTPClient()
-	klog.V(5).Info("Posting updateResults to Kruize Service", bytes.NewBuffer(requestBodyJSON))
-	res, err := client.Post(update_results_url, "application/json", bytes.NewBuffer(requestBodyJSON))
-	if err != nil {
-		return err
-	} else if res.StatusCode == 201 {
-		return nil
-	}
-	return nil
-
+	up, _ := json.Marshal(updateResults)
+	klog.V(9).Infof("Created updateResults Object %v", string(up))
+	return updateResult
 }

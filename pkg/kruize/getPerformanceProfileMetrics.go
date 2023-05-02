@@ -13,19 +13,8 @@ import (
 	klog "k8s.io/klog/v2"
 )
 
-type Result struct {
-	Value           float64               `json:"value,omitempty"`
-	Format          string                `json:"format"`
-	AggregationInfo AggregationInfoValues `json:"aggregation_info"`
-}
-
-type AggregationInfoValues struct {
-	AggregationInfo map[string]float64 `json:"aggregation_info"` //ex: "avg": 123.340
-	Format          string             `json:"format"`
-}
-
 /* Given a prometheus query returns the reult as float64 */
-func getResults(query string) float64 {
+func getResults(query string) (float64, error) {
 	var value float64
 	//setup context with a timeout to avoid blocking
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
@@ -38,6 +27,7 @@ func getResults(query string) float64 {
 			klog.Errorf("API query timed out: %v", err)
 		}
 		klog.Errorf("API query failed: %v", err)
+		return -1, err
 	}
 
 	vector := res.(model.Vector)
@@ -46,5 +36,5 @@ func getResults(query string) float64 {
 		value = (float64)(sample.Value)
 	}
 
-	return value
+	return value, nil
 }

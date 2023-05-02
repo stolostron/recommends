@@ -11,7 +11,7 @@ import (
 	"github.com/stolostron/recommends/pkg/config"
 	"github.com/stolostron/recommends/pkg/helpers"
 	"github.com/stolostron/recommends/pkg/utils"
-	"k8s.io/klog"
+	klog "k8s.io/klog/v2"
 )
 
 //reads in the values from computeRecommendations and prometheus
@@ -52,7 +52,7 @@ type RecommendationSettings struct {
 }
 
 func processRequest(req *Request) {
-	klog.Infof("Processing Request ..%d", len(req.Workloads))
+	klog.Infof("Processing Request %s", len(req.RequestName))
 	var requestBody CreateExperiment
 	var containerDataClean []string
 
@@ -62,12 +62,13 @@ func processRequest(req *Request) {
 	for deployment, containerData := range req.Workloads {
 		containerDataClean = helpers.RemoveDuplicate(containerData)
 		for _, contData := range containerDataClean {
-			containerMap[deployment] = append(containerMap[deployment], Container{ContainerName: contData})
+			containerMap[deployment] = append(containerMap[deployment], Container{ContainerImage: contData, ContainerName: contData})
 		}
 	}
 
 	for deployment, containers := range containerMap {
 		for _, con := range containers {
+			singleContainer := []Container{con}
 			experimentName := fmt.Sprintf("%s-%s-%s", req.RequestName, deployment, con.ContainerName)
 			clusterName := strings.Split(req.RequestName, "_")[1]
 			namespace := strings.Split(req.RequestName, "_")[2]
@@ -83,11 +84,11 @@ func processRequest(req *Request) {
 						Type:       "deployment",
 						Name:       deployment,
 						Namespace:  namespace,
-						Containers: []Container{con},
+						Containers: singleContainer,
 					},
 				},
 				TrialSettings: TrialSettings{
-					MeasurementDuration: "60m",
+					MeasurementDuration: "60min",
 				},
 				RecommendationSettings: RecommendationSettings{
 					Threshold: "0.1",
@@ -109,6 +110,8 @@ func processRequest(req *Request) {
 			}
 
 		}
+		// TODO Remove this block to iterate all Containers .
+		break
 	}
 
 }
