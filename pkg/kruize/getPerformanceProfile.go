@@ -2,6 +2,7 @@ package kruize
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -26,7 +27,7 @@ func NewProfileManager(profile_name string) *profileManager {
 
 //gets perfprof per container from Thanos and returns array of metrics
 func (p *profileManager) GetPerformanceProfileInstanceMetrics(clusterName string, namespace string,
-	workloadName string, containerName string, measurementDur string) []model.Metrics {
+	workloadName string, containerName string, measurementDur string, unixTime int64) []model.Metrics {
 	instanceProfile := *p.performanceProfile
 	var metric model.Metrics
 	var metricsList []model.Metrics
@@ -62,7 +63,7 @@ func (p *profileManager) GetPerformanceProfileInstanceMetrics(clusterName string
 		}
 		aggregateInfo["format"] = format
 		for _, af := range fv.Aggregation_functions {
-			af.Query = replaceTemplate(fv.Name, af.Function, af.Query, clusterName, namespace, workloadName, containerName, measurementDur)
+			af.Query = replaceTemplate(fv.Name, af.Function, af.Query, clusterName, namespace, workloadName, containerName, measurementDur, unixTime)
 			value, err := getResults(af.Query)
 			if err != nil {
 				klog.V(5).Infof("Error running query %s", af.Query)
@@ -84,7 +85,7 @@ func (p *profileManager) GetPerformanceProfileInstanceMetrics(clusterName string
 }
 
 func replaceTemplate(name string, function string, query string, clusterName string, namespace string,
-	workloadName string, containerName string, measurementDur string) string {
+	workloadName string, containerName string, measurementDur string, unixTime int64) string {
 
 	klog.V(8).Infof("Template Query " + query)
 	query = strings.ReplaceAll(query, "$CLUSTER_NAME$", clusterName)
@@ -92,7 +93,8 @@ func replaceTemplate(name string, function string, query string, clusterName str
 	query = strings.ReplaceAll(query, "$WORKLOAD_NAME$", workloadName)
 	query = strings.ReplaceAll(query, "$CONTAINER_NAME$", containerName)
 	query = strings.ReplaceAll(query, "$MEASUREMENT_DURATION$", measurementDur)
-	klog.V(8).Infof("Instance Query " + query)
+	query = strings.ReplaceAll(query, "$UNIX_TIME$", fmt.Sprint(unixTime))
+	klog.V(8).Infof("Instance Query %s", query)
 
 	return query
 }
@@ -122,6 +124,6 @@ func getPerformanceProfile(profileName string) (model.Perf_profile, bool) {
 		klog.Errorf("Error reading performance profile %s : %v \n", profileName, err)
 		return result, false
 	}
-	klog.Infof("SLO.Function_variables: %d", len(result.Slo.Function_variables))
+	klog.V(9).Infof("SLO.Function_variables: %d", len(result.Slo.Function_variables))
 	return result, true
 }
