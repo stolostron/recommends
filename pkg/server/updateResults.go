@@ -117,7 +117,7 @@ func postUpdateResult(updateResults []UpdateResults) error {
 	if err != nil {
 		return err
 	} else if res.StatusCode == 201 {
-		klog.V(5).Infof("Successful updateResults reqest for request %s , startTime: %s , endTime:%s", updateResults[0].ExperimentName, updateResults[0].StartTimestamp, updateResults[0].EndTimestamp)
+		klog.V(5).Infof("Successful updateResults request for request %s , startTime: %s , endTime:%s", updateResults[0].ExperimentName, updateResults[0].StartTimestamp, updateResults[0].EndTimestamp)
 	} else {
 		klog.Warningf("Received unexpected status code(%s) from update request.", res.StatusCode)
 	}
