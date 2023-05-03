@@ -94,7 +94,7 @@ func replaceTemplate(name string, function string, query string, clusterName str
 	query = strings.ReplaceAll(query, "$CONTAINER_NAME$", containerName)
 	query = strings.ReplaceAll(query, "$MEASUREMENT_DURATION$", measurementDur)
 	query = strings.ReplaceAll(query, "$UNIX_TIME$", fmt.Sprint(unixTime))
-	klog.V(8).Infof("Instance Query %s" + query)
+	klog.V(8).Infof("Instance Query %s", query)
 
 	return query
 }
