@@ -13,10 +13,10 @@ func GenerateID() string {
 	max := big.NewInt(999099)
 	valBig, err := rand.Int(rand.Reader, max)
 	if err != nil {
-		klog.Warning("Error generating RequestID.")
-		return fmt.Sprint(0)
+		klog.Warningf("Error generating RequestID. %s", err.Error())
+		return "0"
 	}
-	return fmt.Sprint(valBig.Int64())
+	return fmt.Sprintf("%08d", valBig.Int64())
 }
 
 func RemoveDuplicate(strSlice []string) []string {

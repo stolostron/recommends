@@ -32,7 +32,7 @@ var update_results_url = config.Cfg.KruizeURL + "/updateResults"
 
 func ProcessUpdateQueue(q chan CreateExperiment) {
 	for {
-		klog.Info("Processing update Q")
+		klog.V(9).Info("Processing update Q")
 		ce := <-q
 		go updateResultRequest(&ce)
 	}
@@ -64,8 +64,8 @@ func updateResultRequest(ce *CreateExperiment) {
 				updateResult = UpdateResults{
 					Version:        ce.Version,
 					ExperimentName: ce.ExperimentName,
-					StartTimestamp: startTime.Format("2006-01-02T15:04:05.000Z"), //an hour ago from now
-					EndTimestamp:   endTime.Format("2006-01-02T15:04:05.000Z"),   //now
+					StartTimestamp: startTime.Format("2006-01-02T15:04:05.000Z"), // current time -1 hour
+					EndTimestamp:   endTime.Format("2006-01-02T15:04:05.000Z"),   // current Time
 					KubernetesObjects: []model.KubernetesObjectMetrics{
 						{
 							Type:      "deployment",
@@ -83,14 +83,18 @@ func updateResultRequest(ce *CreateExperiment) {
 				}
 				updateResults = []UpdateResults{updateResult}
 				upJson, _ := json.Marshal(updateResults)
-				klog.V(9).Infof("Created updateResults Object %v", string(upJson))
+				klog.V(9).Infof("Created updateResults Object %s", string(upJson))
 				err := postUpdateResult(updateResults)
 				count := 0
 				for err != nil && count < config.Cfg.RetryCount {
 					count = count + 1
-					klog.Errorf("Cannot post updateResult %s in kruize: Will retry \n", ce.ExperimentName)
-					time.Sleep(time.Duration(config.Cfg.RetryInterval) * time.Millisecond)
+					retryWait := time.Duration(config.Cfg.RetryInterval) * time.Millisecond
+					klog.Errorf("Cannot post updateResult %s in kruize: Will retry in %d ms. \n", ce.ExperimentName, retryWait)
+					time.Sleep(retryWait)
 					err = postUpdateResult(updateResults)
+					if err != nil {
+						klog.Errorf("Error on updateResult %s in kruize:n", err.Error())
+					}
 				}
 
 			}
@@ -107,13 +111,15 @@ func postUpdateResult(updateResults []UpdateResults) error {
 		return err
 	}
 	client := utils.HTTPClient()
+	klog.V(5).Infof("Posting updateResult %s", updateResults[0].ExperimentName)
 	klog.V(9).Infof("Posting updateResult to Kruize Service %v", bytes.NewBuffer(requestBodyJSON))
 	res, err := client.Post(update_results_url, "application/json", bytes.NewBuffer(requestBodyJSON))
 	if err != nil {
 		return err
 	} else if res.StatusCode == 201 {
 		klog.V(5).Infof("Successful updateResults reqest for request %s , startTime: %s , endTime:%s", updateResults[0].ExperimentName, updateResults[0].StartTimestamp, updateResults[0].EndTimestamp)
-		return nil
+	} else {
+		klog.Warningf("Received unexpected status code(%s) from update request.", res.StatusCode)
 	}
 	return nil
 

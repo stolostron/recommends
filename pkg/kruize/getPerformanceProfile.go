@@ -94,7 +94,7 @@ func replaceTemplate(name string, function string, query string, clusterName str
 	query = strings.ReplaceAll(query, "$CONTAINER_NAME$", containerName)
 	query = strings.ReplaceAll(query, "$MEASUREMENT_DURATION$", measurementDur)
 	query = strings.ReplaceAll(query, "$UNIX_TIME$", fmt.Sprint(unixTime))
-	klog.V(8).Infof("Instance Query " + query)
+	klog.V(8).Infof("Instance Query %s" + query)
 
 	return query
 }
@@ -124,6 +124,6 @@ func getPerformanceProfile(profileName string) (model.Perf_profile, bool) {
 		klog.Errorf("Error reading performance profile %s : %v \n", profileName, err)
 		return result, false
 	}
-	klog.Infof("SLO.Function_variables: %d", len(result.Slo.Function_variables))
+	klog.V(9).Infof("SLO.Function_variables: %d", len(result.Slo.Function_variables))
 	return result, true
 }
