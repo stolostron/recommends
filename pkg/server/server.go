@@ -31,6 +31,7 @@ func StartAndListen() {
 	router.HandleFunc("/liveness", livenessProbe).Methods("GET")
 	router.HandleFunc("/readiness", readinessProbe).Methods("GET")
 	router.HandleFunc("/computeRecommendation", computeRecommendations).Methods("POST")
+	router.HandleFunc("/listRecommendation", listRecommendations).Methods("POST")
 
 	srv := &http.Server{
 		Addr:              fmt.Sprintf(":%d", port),
