@@ -1,25 +1,27 @@
 package helpers
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
 
-	"k8s.io/klog"
+	"crypto/rand"
+	"math/big"
+
+	"k8s.io/klog/v2"
 )
 
-func GenerateID(object interface{}) string {
+func GenerateID() string {
 
-	objectString := fmt.Sprintf("%v", object)
-	hash := sha256.Sum256([]byte(objectString))
-
-	hexString := hex.EncodeToString(hash[:])
-
-	return hexString
+	max := big.NewInt(999099)
+	valBig, err := rand.Int(rand.Reader, max)
+	if err != nil {
+		klog.Warningf("Error generating RequestID. %s", err.Error())
+		return "0"
+	}
+	return fmt.Sprintf("%08d", valBig.Int64())
 }
 
 func RemoveDuplicate(strSlice []string) []string {
@@ -34,13 +36,13 @@ func RemoveDuplicate(strSlice []string) []string {
 	return list
 }
 
+// Convert CPU usage from millicores to cores
 func ConvertCpuUsageToCores(millicpu float64) float64 {
-	// Convert CPU usage from millicores to cores
 	return millicpu * 1000.0
 }
 
+// Convert memory usage from bytes to Mebibytes (MiB)
 func ConvertMemoryUsageToMiB(bytes float64) float64 {
-	// Convert memory usage from bytes to Mebibytes (MiB)
 	return bytes / 1024.0 / 1024.0
 }
 

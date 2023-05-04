@@ -79,7 +79,7 @@ func computeRecommendations(w http.ResponseWriter, r *http.Request) {
 
 	//if id for clusterName already exists then we don't need to generate new one
 	if _, found := requestIdMap[requestName]; !found {
-		uid := helpers.GenerateID(requestName)
+		uid := helpers.GenerateID()
 		requestIdMap[requestName] = uid
 		requestName = requestName + "_" + uid
 	}
