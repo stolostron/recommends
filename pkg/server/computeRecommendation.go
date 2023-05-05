@@ -31,6 +31,40 @@ type Request struct {
 	RequestContext context.Context
 }
 
+type Deployment struct {
+	ContainerStatuses []map[string]string `json:"containerStatuses"`
+	// 	//ex. [{container1 : status1}, {container2: status2}]
+}
+
+type Recommendation struct {
+	Deployments map[string]Deployment `json:"containerStatuses"`
+	//ex. {deployment-name: Deployment
+}
+
+type NamespaceCluster struct {
+	Recommendations map[string]Recommendation `json:"recommendations"`
+	//ex. {00737189 : Recommendation}
+}
+
+type NamespaceClusterID struct {
+	NamespaceClusters map[string]NamespaceCluster `json:"namespace_clusterid"`
+	//ex. {local-cluster_open-cluster-management: NamespaceCluster}
+}
+
+//ex:
+// {local-cluster_open-cluster-management:
+// {
+//	{00737189 :
+// 		{deployment-name:
+// 		[
+// 			{container1: status1},
+// 			{container2: status2}, ...
+// 		]
+// 	}
+// }
+// }
+//
+
 // API implementation for /computeRecommendations
 func computeRecommendations(w http.ResponseWriter, r *http.Request) {
 	klog.V(5).Infof("Received Request for compute Recommendations")
