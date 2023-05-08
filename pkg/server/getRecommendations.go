@@ -3,6 +3,7 @@ package server
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 
@@ -99,31 +100,34 @@ func getRecommendations(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	klog.Info(requestUrlList)
-
 	// ex: http://<ip>:<kruize port>/listRecommendations?experiment_name=
 	// ns_local-cluster_open-cluster-management-observability_00465750-observability-alertmanager-config-reloader
 
 	client := utils.HTTPClient()
+	var recommendations []ListRecommendations
 
 	// request per container:
 	for _, requests := range requestUrlList {
-		resp, err := client.Get(requests)
+		req, err := http.NewRequest("GET", requests, nil)
 
-		if err != nil {
-			klog.Error(err)
-
-		} else if resp.StatusCode == 201 {
-			klog.Info("Successfully got recommendations!")
+		if ok := helpers.ErrorHandlingRequests(w, err); !ok {
+			return
 		}
 
-		klog.Info(resp.Body)
+		res, err := client.Do(req)
+		if err != nil {
+			klog.Errorf("Error when calling listRecommendations %v", err)
+		}
+		defer res.Body.Close()
 
-		// dec := json.NewDecoder(r.Body)
-		// err := dec.Decode(&newRecommendation)
+		body, err := io.ReadAll(res.Body)
+		if err != nil {
+			klog.Errorf("Error reading data from the response body %v", err)
+		}
+
+		if err := json.Unmarshal(body, &recommendations); err != nil {
+			klog.Errorf("Cannot unmarshal response data: %v", err)
+
+		}
 	}
 }
-
-// func listRecommendations() {
-
-// }
