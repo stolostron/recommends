@@ -112,7 +112,6 @@ func getRecommendations(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			klog.Errorf("Error when calling listRecommendations %v", err)
 		}
-		defer res.Body.Close()
 
 		body, err := io.ReadAll(res.Body)
 		if err != nil {
