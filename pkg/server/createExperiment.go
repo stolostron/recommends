@@ -51,10 +51,7 @@ type RecommendationSettings struct {
 	Threshold string `json:"threshold"`
 }
 
-// create instance of NamespaceClusterID
-var NcID = NamespaceClusterID{
-	NamespaceClusters: make(map[string]NamespaceCluster),
-}
+var NamespaceClusterIDMap []NamespaceClusterID
 
 func processRequest(req *Request) {
 	klog.Infof("Processing Request %s", req.RequestName)
@@ -117,7 +114,9 @@ func processRequest(req *Request) {
 				UpdateQueue <- requestBody
 			}
 
-			SaveRecommendationData(deployment, con, req, status)
+			//save the experiment to use data for recommendations
+			NcID := SaveRecommendationData(deployment, con, req, status)
+			NamespaceClusterIDMap = append(NamespaceClusterIDMap, *NcID)
 		}
 		//Add break here to run one deployment for test
 		// break
@@ -155,6 +154,10 @@ func ProcessCreateQueue(q chan Request) {
 
 //save the recomendationid and cooresponding containers
 func SaveRecommendationData(deployment string, con Container, req *Request, status string) *NamespaceClusterID {
+
+	var NcID = NamespaceClusterID{
+		NamespaceClusters: make(map[string]NamespaceCluster),
+	}
 
 	containerStatus := make(map[string]string)
 	containerStatus[con.ContainerName] = status

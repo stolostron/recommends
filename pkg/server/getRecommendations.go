@@ -55,18 +55,18 @@ func getRecommendations(w http.ResponseWriter, r *http.Request) {
 
 	//if namespace and recommendationid provided default to use recommendation id
 	if namespace == "" && recommendationId != "" || namespace != "" && recommendationId != "" {
-
 		reqParts := strings.Split(recommendationId, "_")
 		clusterNamespace := fmt.Sprintf("%s_%s", reqParts[1], reqParts[2])
 		id := fmt.Sprint(strings.Split(recommendationId, "_")[3])
+		for _, ncid := range NamespaceClusterIDMap {
+			for deploymentName, deployment := range ncid.NamespaceClusters[clusterNamespace].Recommendations[id].Deployments {
+				for _, containerStatus := range deployment.ContainerStatuses {
+					for containerName, status := range containerStatus {
+						klog.V(5).Infof("Container name: %s, Status: %s\n", containerName, status)
 
-		for deploymentName, deployment := range NcID.NamespaceClusters[clusterNamespace].Recommendations[id].Deployments {
-			for _, containerStatus := range deployment.ContainerStatuses {
-				for containerName, status := range containerStatus {
-					klog.V(5).Infof("Container name: %s, Status: %s\n", containerName, status)
-
-					containerRequestUrl := fmt.Sprint(list_recommendations_url + "?" + "experiment_name=" + "ns_" + clusterNamespace + "_" + recommendationId + "-" + deploymentName + "-" + containerName)
-					requestUrlList = append(requestUrlList, containerRequestUrl)
+						containerRequestUrl := fmt.Sprint(list_recommendations_url + "?" + "experiment_name=" + "ns_" + clusterNamespace + "_" + recommendationId + "-" + deploymentName + "-" + containerName)
+						requestUrlList = append(requestUrlList, containerRequestUrl)
+					}
 				}
 			}
 		}
@@ -74,16 +74,17 @@ func getRecommendations(w http.ResponseWriter, r *http.Request) {
 	//if recommendationid is missing but clustername and namespace provided:
 	if namespace != "" && clusterName != "" && recommendationId == "" {
 		clusterNamespace := clusterName + "_" + namespace
-		nc := NcID.NamespaceClusters[clusterNamespace]
-		for id, recommendation := range nc.Recommendations {
-			for deploymentName, deployment := range recommendation.Deployments {
-				for _, containerStatus := range deployment.ContainerStatuses {
-					for containerName, status := range containerStatus {
-						klog.V(5).Infof("Container name: %s, Status: %s\n", containerName, status)
+		for _, ncID := range NamespaceClusterIDMap {
+			for id, recommendation := range ncID.NamespaceClusters[clusterNamespace].Recommendations {
+				for deploymentName, deployment := range recommendation.Deployments {
+					for _, containerStatus := range deployment.ContainerStatuses {
+						for containerName, status := range containerStatus {
+							klog.V(5).Infof("Container name: %s, Status: %s\n", containerName, status)
 
-						containerRequestUrl := fmt.Sprint(list_recommendations_url + "?" + "experiment_name=" + "ns_" + clusterNamespace + "_" + id + "-" + deploymentName + "-" + containerName)
+							containerRequestUrl := fmt.Sprint(list_recommendations_url + "?" + "experiment_name=" + "ns_" + clusterNamespace + "_" + id + "-" + deploymentName + "-" + containerName)
 
-						requestUrlList = append(requestUrlList, containerRequestUrl)
+							requestUrlList = append(requestUrlList, containerRequestUrl)
+						}
 					}
 				}
 			}
