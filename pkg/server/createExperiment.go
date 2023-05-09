@@ -117,12 +117,10 @@ func processRequest(req *Request) {
 				UpdateQueue <- requestBody
 			}
 
-			NcID := SaveRecommendationData(deployment, con, req, status) //TODO:ADD THE DEPLOYMENT
-
-			klog.Info(NcID)
+			SaveRecommendationData(deployment, con, req, status)
 		}
 		//Add break here to run one deployment for test
-		break
+		// break
 	}
 
 	klog.V(5).Infof("Processed %s", req.RequestName)

@@ -24,18 +24,12 @@ type GetRecommendations []struct {
 	ClusterName      string `json:"cluster_name"`
 }
 
-var GetRecommendationsQueue chan GetRecommendations
-
-func init() {
-	GetRecommendationsQueue = make(chan GetRecommendations)
-}
-
 func getRecommendations(w http.ResponseWriter, r *http.Request) {
 	klog.Infof("Received Request for list Recommendations")
 
 	var getRecommendations GetRecommendations
-
-	// context := r.Context()
+	var requestUrlList []string
+	var recommendations []ListRecommendations
 
 	//check content type is json
 	if r.Header.Get("Content-Type") != "" {
@@ -46,6 +40,8 @@ func getRecommendations(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+
+	//decode user's input:
 	dec := json.NewDecoder(r.Body)
 	err := dec.Decode(&getRecommendations)
 
@@ -57,9 +53,7 @@ func getRecommendations(w http.ResponseWriter, r *http.Request) {
 	namespace := getRecommendations[0].Namespace
 	clusterName := getRecommendations[0].ClusterName
 
-	var requestUrlList []string
-
-	//if there is a namespace provided and recommendation id default to use recommendation id
+	//if namespace and recommendationid provided default to use recommendation id
 	if namespace == "" && recommendationId != "" || namespace != "" && recommendationId != "" {
 
 		reqParts := strings.Split(recommendationId, "_")
@@ -77,6 +71,7 @@ func getRecommendations(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
+	//if recommendationid is missing but clustername and namespace provided:
 	if namespace != "" && clusterName != "" && recommendationId == "" {
 		clusterNamespace := clusterName + "_" + namespace
 		nc := NcID.NamespaceClusters[clusterNamespace]
@@ -100,13 +95,12 @@ func getRecommendations(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// ex: http://<ip>:<kruize port>/listRecommendations?experiment_name=
+	// example of request: http://<ip>:<kruize port>/listRecommendations?experiment_name=
 	// ns_local-cluster_open-cluster-management-observability_00465750-observability-alertmanager-config-reloader
 
+	// make listRecommendations requests to Kruize:
 	client := utils.HTTPClient()
-	var recommendations []ListRecommendations
 
-	// request per container:
 	for _, requests := range requestUrlList {
 		req, err := http.NewRequest("GET", requests, nil)
 
@@ -129,5 +123,13 @@ func getRecommendations(w http.ResponseWriter, r *http.Request) {
 			klog.Errorf("Cannot unmarshal response data: %v", err)
 
 		}
+
+		_, err = w.Write([]byte(body))
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		klog.V(4).Info("Received recommendations")
+
 	}
 }
