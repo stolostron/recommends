@@ -30,6 +30,7 @@ func getRecommendations(w http.ResponseWriter, r *http.Request) {
 	var getRecommendations GetRecommendations
 	var requestUrlList []string
 	var recommendations []ListRecommendations
+	var RecommendationStatusGlobal = RecommendationStatusMap{RecommendationStatus: make(map[string]string)}
 
 	//check content type is json
 	if r.Header.Get("Content-Type") != "" {
@@ -53,41 +54,30 @@ func getRecommendations(w http.ResponseWriter, r *http.Request) {
 	namespace := getRecommendations[0].Namespace
 	clusterName := getRecommendations[0].ClusterName
 
-	//if namespace and recommendationid provided default to use recommendation id
-	if namespace == "" && recommendationId != "" || namespace != "" && recommendationId != "" {
+	//if recommendationid provided default to use recommendation id
+	if recommendationId != "" {
 		reqParts := strings.Split(recommendationId, "_")
-		clusterNamespace := fmt.Sprintf("%s_%s", reqParts[1], reqParts[2])
-		id := fmt.Sprint(strings.Split(recommendationId, "_")[3])
-		for _, ncid := range NamespaceClusterIDMap {
-			for deploymentName, deployment := range ncid.NamespaceClusters[clusterNamespace].Recommendations[id].Deployments {
-				for _, containerStatus := range deployment.ContainerStatuses {
-					for containerName, status := range containerStatus {
-						klog.V(5).Infof("Container name: %s, Status: %s\n", containerName, status)
+		id := reqParts[3]
 
-						containerRequestUrl := fmt.Sprint(list_recommendations_url + "?" + "experiment_name=" + "ns_" + clusterNamespace + "_" + recommendationId + "-" + deploymentName + "-" + containerName)
-						requestUrlList = append(requestUrlList, containerRequestUrl)
-					}
-				}
-			}
+		for _, RecommendationIDMap := range RecommendationIDMaps {
+			rec := RecommendationIDMap.RecommendationID[id]
+			containerRequestUrl := fmt.Sprint(list_recommendations_url + "?" + "experiment_name=" + rec)
+			requestUrlList = append(requestUrlList, containerRequestUrl)
 		}
 	}
 	//if recommendationid is missing but clustername and namespace provided:
 	if namespace != "" && clusterName != "" && recommendationId == "" {
+		var id string
 		clusterNamespace := clusterName + "_" + namespace
-		for _, ncID := range NamespaceClusterIDMap {
-			for id, recommendation := range ncID.NamespaceClusters[clusterNamespace].Recommendations {
-				for deploymentName, deployment := range recommendation.Deployments {
-					for _, containerStatus := range deployment.ContainerStatuses {
-						for containerName, status := range containerStatus {
-							klog.V(5).Infof("Container name: %s, Status: %s\n", containerName, status)
 
-							containerRequestUrl := fmt.Sprint(list_recommendations_url + "?" + "experiment_name=" + "ns_" + clusterNamespace + "_" + id + "-" + deploymentName + "-" + containerName)
+		for _, ClusterNamespaceMap := range ClusterNamespaceMaps {
+			id = ClusterNamespaceMap.ClusterNamespace[clusterNamespace]
+		}
+		for _, RecommendationIDMap := range RecommendationIDMaps {
+			rec := RecommendationIDMap.RecommendationID[id]
+			containerRequestUrl := fmt.Sprint(list_recommendations_url + "?" + "experiment_name=" + rec)
+			requestUrlList = append(requestUrlList, containerRequestUrl)
 
-							requestUrlList = append(requestUrlList, containerRequestUrl)
-						}
-					}
-				}
-			}
 		}
 		// if missing both namespace and recommendation or if missing both namespace and clustername error
 	} else if namespace == "" && recommendationId == "" || namespace == "" && clusterName == "" {
@@ -101,6 +91,7 @@ func getRecommendations(w http.ResponseWriter, r *http.Request) {
 
 	// make listRecommendations requests to Kruize:
 	client := utils.HTTPClient()
+	badStatus := fmt.Sprintf("Error")
 
 	for _, requests := range requestUrlList {
 		req, err := http.NewRequest("GET", requests, nil)
@@ -112,15 +103,20 @@ func getRecommendations(w http.ResponseWriter, r *http.Request) {
 		res, err := client.Do(req)
 		if err != nil {
 			klog.Errorf("Error when calling listRecommendations %v", err)
+			RecommendationStatusGlobal.RecommendationStatus[requests] = badStatus
+
 		}
 
 		body, err := io.ReadAll(res.Body)
 		if err != nil {
 			klog.Errorf("Error reading data from the response body %v", err)
+			RecommendationStatusGlobal.RecommendationStatus[requests] = badStatus
+
 		}
 
 		if err := json.Unmarshal(body, &recommendations); err != nil {
 			klog.Errorf("Cannot unmarshal response data: %v", err)
+			RecommendationStatusGlobal.RecommendationStatus[requests] = badStatus
 
 		}
 
@@ -130,6 +126,9 @@ func getRecommendations(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		klog.V(4).Info("Received recommendations")
+		status := fmt.Sprintf("Received recommendations")
+
+		RecommendationStatusGlobal.RecommendationStatus[requests] = status
 
 	}
 }

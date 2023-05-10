@@ -51,13 +51,13 @@ type RecommendationSettings struct {
 	Threshold string `json:"threshold"`
 }
 
-var NamespaceClusterIDMap []NamespaceClusterID
+var RecommendationIDMaps []RecommendationIDMap
+var ClusterNamespaceMaps []ClusterNamespaceMap
 
 func processRequest(req *Request) {
 	klog.Infof("Processing Request %s", req.RequestName)
 	var requestBody CreateExperiment
 	var containerDataClean []string
-	var status string
 	containerMap := make(map[string][]Container)
 
 	//get containers
@@ -102,21 +102,20 @@ func processRequest(req *Request) {
 			count := 0
 			err := createExperiment(requestBodies, req.RequestContext)
 			for err != nil && count < config.Cfg.RetryCount {
-				status = fmt.Sprintf("Error Cannot create createExperiment %s", experimentName)
 				count = count + 1
 				klog.Errorf("Cannot create createExperiment %s in kruize: Will retry \n", experimentName)
 				time.Sleep(time.Duration(config.Cfg.RetryInterval) * time.Millisecond)
 				err = createExperiment(requestBodies, req.RequestContext)
 			}
 			if err == nil {
-				status = "Good"
 				klog.V(5).Infof("CreateExperiment %s profile created successfully", experimentName)
 				UpdateQueue <- requestBody
 			}
 
-			//save the experiment to use data for recommendations
-			NcID := SaveRecommendationData(deployment, con, req, status)
-			NamespaceClusterIDMap = append(NamespaceClusterIDMap, *NcID)
+			recommendationIDMap, clusterNamespaceMap := SaveRecommendationData(req, experimentName)
+			RecommendationIDMaps = append(RecommendationIDMaps, *recommendationIDMap)
+			ClusterNamespaceMaps = append(ClusterNamespaceMaps, *clusterNamespaceMap)
+
 		}
 		//Add break here to run one deployment for test
 		// break
@@ -141,6 +140,7 @@ func createExperiment(requestBodies []CreateExperiment, context context.Context)
 	} else if res.StatusCode == 201 {
 		return nil
 	}
+
 	return nil
 
 }
@@ -152,39 +152,18 @@ func ProcessCreateQueue(q chan Request) {
 	}
 }
 
-//save the recomendationid and cooresponding containers
-func SaveRecommendationData(deployment string, con Container, req *Request, status string) *NamespaceClusterID {
+func SaveRecommendationData(req *Request, experimentName string) (*RecommendationIDMap, *ClusterNamespaceMap) {
 
-	var NcID = NamespaceClusterID{
-		NamespaceClusters: make(map[string]NamespaceCluster),
-	}
-
-	containerStatus := make(map[string]string)
-	containerStatus[con.ContainerName] = status
-
-	dep := Deployment{
-		ContainerStatuses: []map[string]string{
-			containerStatus,
-		},
-	}
-
-	rec := Recommendation{
-		Deployments: map[string]Deployment{
-			deployment: dep,
-		},
-	}
-
-	// Create a new NamespaceCluster object
-	nc := NamespaceCluster{
-		Recommendations: map[string]Recommendation{
-			strings.Split(req.RequestName, "_")[3]: rec,
-		},
-	}
+	//for  recommendationIDmap:
+	var recommendationIDMap = RecommendationIDMap{RecommendationID: make(map[string]string)}
+	var clusterNamespaceMap = ClusterNamespaceMap{ClusterNamespace: make(map[string]string)}
 
 	reqParts := strings.Split(req.RequestName, "_")
+	recid := reqParts[3]
 	clusterNamespace := fmt.Sprintf("%s_%s", reqParts[1], reqParts[2])
-	NcID.NamespaceClusters[clusterNamespace] = nc
 
-	return &NcID
+	recommendationIDMap.RecommendationID[recid] = experimentName
+	clusterNamespaceMap.ClusterNamespace[clusterNamespace] = recid
 
+	return &recommendationIDMap, &clusterNamespaceMap
 }
