@@ -1,10 +1,15 @@
-package server
 
-/*
-Sample computeRecommendations POST request and response body: (NOTE: application is optional if namespace is provided)
 
-https://localhost:4020/computeRecommendations
+# Recommends sample requests and responses
 
+computeRecommendations
+======================
+
+Sample of **computeRecommendations** POST request: (NOTE: application is optional if namespace is provided)
+
+Request URL: `https://localhost:4020/computeRecommendations`
+
+```
 [
     {
         "clusterName": "local-cluster",
@@ -13,18 +18,23 @@ https://localhost:4020/computeRecommendations
         "measurement_duration": "60mn"
     }
 ]
+```
 
-Sample computeRecommendations response body:
+Sample of **computeRecommendations** response body:
 
+```
 Recommendation for cluster local-cluster namespace open-cluster-management-observability
 successfully submitted with recommendation Id ns_local-cluster_open-cluster-management-observability_00610619
-*/
+```
 
-/*
-Sample of getRecommendations POST request: (NOTE: either recommendation_id or combintation of cluster_name and namespace must be provided)
+getRecommendations
+==================
 
-https://localhost:4020/getRecommendations
+Sample of **getRecommendations** POST request: (NOTE: either recommendation_id or combintation of cluster_name and namespace must be provided)
 
+Request URL: `https://localhost:4020/getRecommendations`
+
+```
 [
     {
         "recommendation_id": "",
@@ -33,8 +43,10 @@ https://localhost:4020/getRecommendations
 
     }
 ]
+```
 
-Sample of getRecommendations response:
+Sample of **getRecommendations** response:
+```
 [
   {
     "cluster_name": "local-cluster",
@@ -64,5 +76,5 @@ Sample of getRecommendations response:
     "experiment_name": "ns_local-cluster_open-cluster-management-observability_00610619-observability-thanos-rule-configmap-reloader"
   }
 ]
+```
 
-*/

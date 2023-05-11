@@ -30,7 +30,7 @@ func getRecommendations(w http.ResponseWriter, r *http.Request) {
 	var getRecommendations RecommendationInput
 	var requestUrlList []string
 	var recommendations []ListRecommendations
-	var RecommendationStatusGlobal = RecommendationStatusMap{RecommendationStatus: make(map[string]string)}
+	var RecommendationStatusMaps = RecommendationStatusMap{RecommendationStatus: make(map[string]string)}
 
 	//check content type is json
 	if r.Header.Get("Content-Type") != "" {
@@ -92,6 +92,10 @@ func getRecommendations(w http.ResponseWriter, r *http.Request) {
 	badStatus := "Error"
 
 	for _, requests := range requestUrlList {
+
+		// RecommendationStatusMaps.lock.Lock()
+		// defer RecommendationStatusMaps.lock.Unlock()
+
 		req, err := http.NewRequest("GET", requests, nil)
 
 		if ok := helpers.ErrorHandlingRequests(w, err); !ok {
@@ -101,20 +105,20 @@ func getRecommendations(w http.ResponseWriter, r *http.Request) {
 		res, err := client.Do(req)
 		if err != nil {
 			klog.Errorf("Error when calling listRecommendations %v", err)
-			RecommendationStatusGlobal.RecommendationStatus[requests] = badStatus
+			RecommendationStatusMaps.RecommendationStatus[requests] = badStatus
 
 		}
 
 		body, err := io.ReadAll(res.Body)
 		if err != nil {
 			klog.Errorf("Error reading data from the response body %v", err)
-			RecommendationStatusGlobal.RecommendationStatus[requests] = badStatus
+			RecommendationStatusMaps.RecommendationStatus[requests] = badStatus
 
 		}
 
 		if err := json.Unmarshal(body, &recommendations); err != nil {
 			klog.Errorf("Cannot unmarshal response data: %v", err)
-			RecommendationStatusGlobal.RecommendationStatus[requests] = badStatus
+			RecommendationStatusMaps.RecommendationStatus[requests] = badStatus
 
 		}
 
@@ -127,7 +131,7 @@ func getRecommendations(w http.ResponseWriter, r *http.Request) {
 		klog.V(4).Info("Received recommendations")
 		status := "Received recommendations"
 
-		RecommendationStatusGlobal.RecommendationStatus[requests] = status
+		RecommendationStatusMaps.RecommendationStatus[requests] = status
 
 	}
 }

@@ -7,11 +7,11 @@ type ClusterNamespaceMap struct {
 
 type RecommendationIDMap struct {
 	RecommendationID map[string]string
-	//map[int64]string --> ex. {123432112: "ns_local-cluster_open-cluster-management-observability_deployment_container"
+	//map[int64]string --> ex. {12343212: "ns_local-cluster_open-cluster-management-observability_deployment_container"
 }
 
 type RecommendationStatusMap struct {
 	RecommendationStatus map[string]string
-	// map[string]string --> ex. "ns_local-cluster_open-cluster-management-observability_deployment_container": "Good"
-
+	// lock                 sync.Mutex
+	// map[string]string --> ex. "ns_local-cluster_open-cluster-management-observability_12343212-deployment_container": "Good"
 }
