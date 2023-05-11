@@ -91,7 +91,7 @@ func getRecommendations(w http.ResponseWriter, r *http.Request) {
 
 	// make listRecommendations requests to Kruize:
 	client := utils.HTTPClient()
-	badStatus := fmt.Sprintf("Error")
+	badStatus := "Error"
 
 	for _, requests := range requestUrlList {
 		req, err := http.NewRequest("GET", requests, nil)
@@ -126,7 +126,7 @@ func getRecommendations(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		klog.V(4).Info("Received recommendations")
-		status := fmt.Sprintf("Received recommendations")
+		status := "Received recommendations"
 
 		RecommendationStatusGlobal.RecommendationStatus[requests] = status
 
