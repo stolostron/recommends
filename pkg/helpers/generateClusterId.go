@@ -65,7 +65,7 @@ func ErrorHandlingRequests(w http.ResponseWriter, err error) bool {
 			http.Error(w, "{\"message\":\"Request body must not be empty.\"}", http.StatusBadRequest)
 
 		default:
-			klog.Error(err.Error())
+			klog.Error("Unexpected error while processing request. ", err.Error())
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		}
 		return false

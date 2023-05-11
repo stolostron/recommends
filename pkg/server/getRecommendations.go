@@ -18,7 +18,7 @@ import (
 var list_recommendations_url = config.Cfg.KruizeURL + "/listRecommendations"
 
 //struct to capture input for getRecommendations request
-type GetRecommendations []struct {
+type RecommendationInput []struct {
 	RecommendationId string `json:"recommendation_id"`
 	Namespace        string `json:"namespace"`
 	ClusterName      string `json:"cluster_name"`
@@ -27,7 +27,7 @@ type GetRecommendations []struct {
 func getRecommendations(w http.ResponseWriter, r *http.Request) {
 	klog.Infof("Received Request for list Recommendations")
 
-	var getRecommendations GetRecommendations
+	var getRecommendations RecommendationInput
 	var requestUrlList []string
 	var recommendations []ListRecommendations
 	var RecommendationStatusGlobal = RecommendationStatusMap{RecommendationStatus: make(map[string]string)}
@@ -70,9 +70,7 @@ func getRecommendations(w http.ResponseWriter, r *http.Request) {
 		var id string
 		clusterNamespace := clusterName + "_" + namespace
 
-		for _, ClusterNamespaceMap := range ClusterNamespaceMaps {
-			id = ClusterNamespaceMap.ClusterNamespace[clusterNamespace]
-		}
+		id = ClusterNamespaceMaps[0].ClusterNamespace[clusterNamespace]
 		for _, RecommendationIDMap := range RecommendationIDMaps {
 			rec := RecommendationIDMap.RecommendationID[id]
 			containerRequestUrl := fmt.Sprint(list_recommendations_url + "?" + "experiment_name=" + rec)
@@ -122,7 +120,8 @@ func getRecommendations(w http.ResponseWriter, r *http.Request) {
 
 		_, err = w.Write([]byte(body))
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			klog.Warning("Unexpected error processing the response. ", err.Error())
+			http.Error(w, "Unexpected error processing the response", http.StatusInternalServerError)
 			return
 		}
 		klog.V(4).Info("Received recommendations")
