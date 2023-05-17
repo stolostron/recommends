@@ -51,21 +51,21 @@ type RecommendationSettings struct {
 	Threshold string `json:"threshold"`
 }
 
-var RecommendationIDMaps []RecommendationIDMap
-var ClusterNamespaceMaps []ClusterNamespaceMap
+var RecommendationMap *RecommendationData
 
 func processRequest(req *Request) {
 	klog.Infof("Processing Request %s", req.RequestName)
 	var requestBody CreateExperiment
 	var containerDataClean []string
 	containerMap := make(map[string][]Container)
+	containerObjectMap := make(map[string][]string)
 
 	//get containers
 	for deployment, containerData := range req.Workloads {
 		containerDataClean = helpers.RemoveDuplicate(containerData)
 		for _, contData := range containerDataClean {
 			containerMap[deployment] = append(containerMap[deployment], Container{ContainerImage: contData, ContainerName: contData})
-
+			containerObjectMap[deployment] = append(containerObjectMap[deployment], contData)
 		}
 	}
 
@@ -112,11 +112,11 @@ func processRequest(req *Request) {
 				UpdateQueue <- requestBody
 			}
 
-			recommendationIDMap, clusterNamespaceMap := SaveRecommendationData(req, experimentName)
-			RecommendationIDMaps = append(RecommendationIDMaps, *recommendationIDMap)
-			ClusterNamespaceMaps = append(ClusterNamespaceMaps, *clusterNamespaceMap)
+			clusterNamespaceMap := SaveRecommendationData(containerObjectMap, req)
+			RecommendationMap = clusterNamespaceMap
 
 		}
+
 		//Add break here to run one deployment for test
 		// break
 	}
@@ -152,18 +152,41 @@ func ProcessCreateQueue(q chan Request) {
 	}
 }
 
-func SaveRecommendationData(req *Request, experimentName string) (*RecommendationIDMap, *ClusterNamespaceMap) {
+func SaveRecommendationData(containerMapObject map[string][]string, req *Request) *RecommendationData {
 
-	//for  recommendationIDmap:
-	var recommendationIDMap = RecommendationIDMap{RecommendationID: make(map[string]string)}
-	var clusterNamespaceMap = ClusterNamespaceMap{ClusterNamespace: make(map[string]string)}
+	var recommendationResult = RecommendationData{ClusterNamespace: make(map[string]string),
+		RecommendationID: make(map[string]string), RecommendationStatus: make(map[string]string),
+		Recommendation: make(map[string][]map[string][]map[string]string)}
 
 	reqParts := strings.Split(req.RequestName, "_")
 	recid := reqParts[3]
+
 	clusterNamespace := fmt.Sprintf("%s_%s", reqParts[1], reqParts[2])
 
-	recommendationIDMap.RecommendationID[recid] = experimentName
-	clusterNamespaceMap.ClusterNamespace[clusterNamespace] = recid
+	recommendationResult.ClusterNamespace[clusterNamespace] = recid
+	recommendationResult.RecommendationID[recid] = clusterNamespace
 
-	return &recommendationIDMap, &clusterNamespaceMap
+	deployments := make([]map[string][]map[string]string, 0)
+
+	for deployment, containers := range containerMapObject {
+		containerRecommendations := make([]map[string]string, 0)
+		for _, container := range containers {
+			containerRecommendation := map[string]string{
+				container: "recommendation-status",
+			}
+			containerRecommendations = append(containerRecommendations, containerRecommendation)
+		}
+
+		deploymentMap := map[string][]map[string]string{
+			deployment: containerRecommendations,
+		}
+		deployments = append(deployments, deploymentMap)
+	}
+
+	recommendationResult.Recommendation[recid] = deployments
+
+	klog.Info(recommendationResult)
+
+	return &recommendationResult
+
 }

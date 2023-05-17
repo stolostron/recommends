@@ -24,13 +24,13 @@ type RecommendationInput []struct {
 	ClusterName      string `json:"cluster_name"`
 }
 
+var requestUrlList []string
+
 func getRecommendations(w http.ResponseWriter, r *http.Request) {
 	klog.Infof("Received Request for list Recommendations")
 
 	var getRecommendations RecommendationInput
-	var requestUrlList []string
 	var recommendations []ListRecommendations
-	var RecommendationStatusMaps = RecommendationStatusMap{RecommendationStatus: make(map[string]string)}
 
 	//check content type is json
 	if r.Header.Get("Content-Type") != "" {
@@ -59,24 +59,16 @@ func getRecommendations(w http.ResponseWriter, r *http.Request) {
 		reqParts := strings.Split(recommendationId, "_")
 		id := reqParts[3]
 
-		for _, RecommendationIDMap := range RecommendationIDMaps {
-			rec := RecommendationIDMap.RecommendationID[id]
-			containerRequestUrl := fmt.Sprint(list_recommendations_url + "?" + "experiment_name=" + rec)
-			requestUrlList = append(requestUrlList, containerRequestUrl)
-		}
+		buildKruizeListRequest(id)
+
 	}
 	//if recommendationid is missing but clustername and namespace provided:
 	if namespace != "" && clusterName != "" && recommendationId == "" {
-		var id string
 		clusterNamespace := clusterName + "_" + namespace
+		id := RecommendationMap.ClusterNamespace[clusterNamespace]
 
-		id = ClusterNamespaceMaps[0].ClusterNamespace[clusterNamespace]
-		for _, RecommendationIDMap := range RecommendationIDMaps {
-			rec := RecommendationIDMap.RecommendationID[id]
-			containerRequestUrl := fmt.Sprint(list_recommendations_url + "?" + "experiment_name=" + rec)
-			requestUrlList = append(requestUrlList, containerRequestUrl)
+		buildKruizeListRequest(id)
 
-		}
 		// if missing both namespace and recommendation or if missing both namespace and clustername error
 	} else if namespace == "" && recommendationId == "" || namespace == "" && clusterName == "" {
 		klog.V(5).Infof("Request missing both RecommendationId and Namespace. Need at least one to fulfill request.")
@@ -84,6 +76,7 @@ func getRecommendations(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	klog.Info(requestUrlList)
 	// example of request: http://<ip>:<kruize port>/listRecommendations?experiment_name=
 	// ns_local-cluster_open-cluster-management-observability_00465750-observability-alertmanager-config-reloader
 
@@ -92,9 +85,6 @@ func getRecommendations(w http.ResponseWriter, r *http.Request) {
 	badStatus := "Error"
 
 	for _, requests := range requestUrlList {
-
-		// RecommendationStatusMaps.lock.Lock()
-		// defer RecommendationStatusMaps.lock.Unlock()
 
 		req, err := http.NewRequest("GET", requests, nil)
 
@@ -105,20 +95,20 @@ func getRecommendations(w http.ResponseWriter, r *http.Request) {
 		res, err := client.Do(req)
 		if err != nil {
 			klog.Errorf("Error when calling listRecommendations %v", err)
-			RecommendationStatusMaps.RecommendationStatus[requests] = badStatus
+			RecommendationMap.RecommendationStatus[requests] = badStatus
 
 		}
 
 		body, err := io.ReadAll(res.Body)
 		if err != nil {
 			klog.Errorf("Error reading data from the response body %v", err)
-			RecommendationStatusMaps.RecommendationStatus[requests] = badStatus
+			RecommendationMap.RecommendationStatus[requests] = badStatus
 
 		}
 
 		if err := json.Unmarshal(body, &recommendations); err != nil {
 			klog.Errorf("Cannot unmarshal response data: %v", err)
-			RecommendationStatusMaps.RecommendationStatus[requests] = badStatus
+			RecommendationMap.RecommendationStatus[requests] = badStatus
 
 		}
 
@@ -131,7 +121,24 @@ func getRecommendations(w http.ResponseWriter, r *http.Request) {
 		klog.V(4).Info("Received recommendations")
 		status := "Received recommendations"
 
-		RecommendationStatusMaps.RecommendationStatus[requests] = status
+		RecommendationMap.RecommendationStatus[requests] = status
 
+	}
+}
+
+func buildKruizeListRequest(id string) {
+	experimentName := RecommendationMap.RecommendationID[id]
+
+	for _, rec := range RecommendationMap.Recommendation[id] {
+		for dep, deplist := range rec {
+			for _, conlist := range deplist {
+				for con := range conlist {
+
+					containerRequestUrl := fmt.Sprint(list_recommendations_url + "?" + "experiment_name=" + "ns_" + experimentName + "_" + id + "-" + dep + "-" + con)
+					requestUrlList = append(requestUrlList, containerRequestUrl)
+
+				}
+			}
+		}
 	}
 }
