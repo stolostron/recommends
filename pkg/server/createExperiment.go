@@ -51,7 +51,11 @@ type RecommendationSettings struct {
 	Threshold string `json:"threshold"`
 }
 
-var RecommendationMap *RecommendationData
+type RecommendationStore struct {
+	data []*RecommendationItem
+}
+
+var Recommendationstore RecommendationStore
 
 func processRequest(req *Request) {
 	klog.Infof("Processing Request %s", req.RequestName)
@@ -113,7 +117,7 @@ func processRequest(req *Request) {
 			}
 
 			clusterNamespaceMap := SaveRecommendationData(containerObjectMap, req)
-			RecommendationMap = clusterNamespaceMap
+			Recommendationstore.data = append(Recommendationstore.data, clusterNamespaceMap)
 
 		}
 
@@ -152,24 +156,20 @@ func ProcessCreateQueue(q chan Request) {
 	}
 }
 
-func SaveRecommendationData(containerMapObject map[string][]string, req *Request) *RecommendationData {
+func SaveRecommendationData(containerMapObject map[string][]string, req *Request) *RecommendationItem {
 
-	var recommendationResult = RecommendationData{ClusterNamespace: make(map[string]string),
-		RecommendationID: make(map[string]string), RecommendationStatus: make(map[string]string),
-		Recommendation: make(map[string][]map[string][]map[string]string)}
+	var recommendationItem = RecommendationItem{}
 
 	reqParts := strings.Split(req.RequestName, "_")
-	recid := reqParts[3]
 
-	clusterNamespace := fmt.Sprintf("%s_%s", reqParts[1], reqParts[2])
+	recommendationItem.Cluster = reqParts[1]
+	recommendationItem.Namespace = reqParts[2]
+	recommendationItem.RecommendationID = reqParts[3]
 
-	recommendationResult.ClusterNamespace[clusterNamespace] = recid
-	recommendationResult.RecommendationID[recid] = clusterNamespace
-
-	deployments := make([]map[string][]map[string]string, 0)
+	deployments := make(map[string][]map[string]string)
 
 	for deployment, containers := range containerMapObject {
-		containerRecommendations := make([]map[string]string, 0)
+		containerRecommendations := make([]map[string]string, 0) //ex: [{cont1:rec1}, {con2:rec2},..]
 		for _, container := range containers {
 			containerRecommendation := map[string]string{
 				container: "recommendation-status",
@@ -177,16 +177,12 @@ func SaveRecommendationData(containerMapObject map[string][]string, req *Request
 			containerRecommendations = append(containerRecommendations, containerRecommendation)
 		}
 
-		deploymentMap := map[string][]map[string]string{
+		deployments = map[string][]map[string]string{
 			deployment: containerRecommendations,
 		}
-		deployments = append(deployments, deploymentMap)
 	}
 
-	recommendationResult.Recommendation[recid] = deployments
-
-	klog.Info(recommendationResult)
-
-	return &recommendationResult
+	recommendationItem.Recommendation = deployments
+	return &recommendationItem
 
 }

@@ -31,7 +31,7 @@ func getRecommendations(w http.ResponseWriter, r *http.Request) {
 
 	var getRecommendations RecommendationInput
 	var recommendations []ListRecommendations
-
+	var rec *RecommendationItem
 	//check content type is json
 	if r.Header.Get("Content-Type") != "" {
 		value, _ := header.ParseValueAndParams(r.Header, "Content-Type")
@@ -59,15 +59,13 @@ func getRecommendations(w http.ResponseWriter, r *http.Request) {
 		reqParts := strings.Split(recommendationId, "_")
 		id := reqParts[3]
 
-		buildKruizeListRequest(id)
+		rec = getById(id)
 
 	}
 	//if recommendationid is missing but clustername and namespace provided:
 	if namespace != "" && clusterName != "" && recommendationId == "" {
-		clusterNamespace := clusterName + "_" + namespace
-		id := RecommendationMap.ClusterNamespace[clusterNamespace]
 
-		buildKruizeListRequest(id)
+		getByClusterNamespace(clusterName, namespace)
 
 		// if missing both namespace and recommendation or if missing both namespace and clustername error
 	} else if namespace == "" && recommendationId == "" || namespace == "" && clusterName == "" {
@@ -76,69 +74,93 @@ func getRecommendations(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	klog.Info(requestUrlList)
-	// example of request: http://<ip>:<kruize port>/listRecommendations?experiment_name=
-	// ns_local-cluster_open-cluster-management-observability_00465750-observability-alertmanager-config-reloader
-
-	// make listRecommendations requests to Kruize:
 	client := utils.HTTPClient()
-	badStatus := "Error"
 
 	for _, requests := range requestUrlList {
 
 		req, err := http.NewRequest("GET", requests, nil)
 
 		if ok := helpers.ErrorHandlingRequests(w, err); !ok {
+			rec.RecommendationStatus = fmt.Sprint("Error", err)
 			return
 		}
 
 		res, err := client.Do(req)
 		if err != nil {
+			rec.RecommendationStatus = fmt.Sprint("Error", err)
+
 			klog.Errorf("Error when calling listRecommendations %v", err)
-			RecommendationMap.RecommendationStatus[requests] = badStatus
 
 		}
 
 		body, err := io.ReadAll(res.Body)
 		if err != nil {
+			rec.RecommendationStatus = fmt.Sprint("Error", err)
+
 			klog.Errorf("Error reading data from the response body %v", err)
-			RecommendationMap.RecommendationStatus[requests] = badStatus
 
 		}
 
 		if err := json.Unmarshal(body, &recommendations); err != nil {
+			rec.RecommendationStatus = fmt.Sprint("Error", err)
+
 			klog.Errorf("Cannot unmarshal response data: %v", err)
-			RecommendationMap.RecommendationStatus[requests] = badStatus
 
 		}
 
 		_, err = w.Write([]byte(body))
+
 		if err != nil {
+			rec.RecommendationStatus = fmt.Sprint("Error", err)
+
 			klog.Warning("Unexpected error processing the response. ", err.Error())
 			http.Error(w, "Unexpected error processing the response", http.StatusInternalServerError)
 			return
 		}
-		klog.V(4).Info("Received recommendations")
-		status := "Received recommendations"
 
-		RecommendationMap.RecommendationStatus[requests] = status
+		rec.RecommendationStatus = fmt.Sprint("Recieved Recommendation")
+
+		klog.V(4).Info("Received recommendations")
 
 	}
 }
 
-func buildKruizeListRequest(id string) {
-	experimentName := RecommendationMap.RecommendationID[id]
+func getById(id string) *RecommendationItem {
 
-	for _, rec := range RecommendationMap.Recommendation[id] {
-		for dep, deplist := range rec {
-			for _, conlist := range deplist {
-				for con := range conlist {
+	var recitem *RecommendationItem
+	for _, rec := range Recommendationstore.data {
+		if rec.RecommendationID == id {
+			recitem = rec
+			for dep, deplist := range rec.Recommendation {
+				for _, conlist := range deplist {
+					for con := range conlist {
 
-					containerRequestUrl := fmt.Sprint(list_recommendations_url + "?" + "experiment_name=" + "ns_" + experimentName + "_" + id + "-" + dep + "-" + con)
-					requestUrlList = append(requestUrlList, containerRequestUrl)
+						containerRequestUrl := fmt.Sprint(list_recommendations_url + "?" + "experiment_name=" + "ns_" + rec.Cluster + "_" + rec.Namespace + "_" + id + "-" + dep + "-" + con)
+						requestUrlList = append(requestUrlList, containerRequestUrl)
 
+					}
 				}
 			}
 		}
 	}
+	return recitem
+}
+
+func getByClusterNamespace(cluster string, namespace string) []string {
+
+	for _, rec := range Recommendationstore.data {
+		if rec.Cluster == cluster && rec.Namespace == namespace {
+			for dep, deplist := range rec.Recommendation {
+				for _, conlist := range deplist {
+					for con := range conlist {
+
+						containerRequestUrl := fmt.Sprint(list_recommendations_url + "?" + "experiment_name=" + "ns_" + rec.Cluster + "_" + rec.Namespace + "_" + rec.RecommendationID + "-" + dep + "-" + con)
+						requestUrlList = append(requestUrlList, containerRequestUrl)
+
+					}
+				}
+			}
+		}
+	}
+	return requestUrlList
 }
