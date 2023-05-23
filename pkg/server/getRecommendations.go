@@ -65,7 +65,7 @@ func getRecommendations(w http.ResponseWriter, r *http.Request) {
 	//if recommendationid is missing but clustername and namespace provided:
 	if namespace != "" && clusterName != "" && recommendationId == "" {
 
-		getByClusterNamespace(clusterName, namespace)
+		rec = getByClusterNamespace(clusterName, namespace)
 
 		// if missing both namespace and recommendation or if missing both namespace and clustername error
 	} else if namespace == "" && recommendationId == "" || namespace == "" && clusterName == "" {
@@ -76,9 +76,9 @@ func getRecommendations(w http.ResponseWriter, r *http.Request) {
 
 	client := utils.HTTPClient()
 
-	for _, requests := range requestUrlList {
+	for _, request := range requestUrlList {
 
-		req, err := http.NewRequest("GET", requests, nil)
+		req, err := http.NewRequest("GET", request, nil)
 
 		if ok := helpers.ErrorHandlingRequests(w, err); !ok {
 			rec.RecommendationStatus = fmt.Sprint("Error", err)
@@ -107,7 +107,6 @@ func getRecommendations(w http.ResponseWriter, r *http.Request) {
 			klog.Errorf("Cannot unmarshal response data: %v", err)
 
 		}
-
 		_, err = w.Write([]byte(body))
 
 		if err != nil {
@@ -118,8 +117,19 @@ func getRecommendations(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		rec.RecommendationStatus = fmt.Sprint("Recieved Recommendation")
+		rec.RecommendationStatus = "Recieved Recommendation"
 
+		for dep, deplist := range rec.Recommendation {
+			for _, conlist := range deplist {
+				for con := range conlist {
+
+					rec = addRec(rec, dep, con, recommendations)
+
+				}
+			}
+		}
+
+		klog.Info(rec.Recommendation)
 		klog.V(4).Info("Received recommendations")
 
 	}
@@ -146,10 +156,12 @@ func getById(id string) *RecommendationItem {
 	return recitem
 }
 
-func getByClusterNamespace(cluster string, namespace string) []string {
+func getByClusterNamespace(cluster string, namespace string) *RecommendationItem {
+	var recitem *RecommendationItem
 
 	for _, rec := range Recommendationstore.data {
 		if rec.Cluster == cluster && rec.Namespace == namespace {
+			recitem = rec
 			for dep, deplist := range rec.Recommendation {
 				for _, conlist := range deplist {
 					for con := range conlist {
@@ -162,5 +174,16 @@ func getByClusterNamespace(cluster string, namespace string) []string {
 			}
 		}
 	}
-	return requestUrlList
+	return recitem
+}
+
+func addRec(rec *RecommendationItem, deploy string, container string, recommendation []ListRecommendations) *RecommendationItem {
+
+	rec.Recommendation = make(map[string][]map[string][]ListRecommendations)
+	containerMap := make(map[string][]ListRecommendations)
+
+	containerMap[container] = recommendation
+	rec.Recommendation[deploy] = append(rec.Recommendation[deploy], containerMap)
+
+	return rec
 }

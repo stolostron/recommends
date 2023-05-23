@@ -19,7 +19,7 @@ func init() {
 }
 
 type recommendation []struct {
-	ClusterName         string `json:"clusterName"`
+	ClusterName         string `json:"cluster_name"`
 	Namespace           string `json:"namespace"`
 	Application         string `json:"application"`
 	MeasurementDuration string `json:"measurement_duration"` //ex: "15min"

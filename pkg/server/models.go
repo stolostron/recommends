@@ -15,5 +15,5 @@ type RecommendationItem struct {
 	Namespace            string
 	RecommendationID     string
 	RecommendationStatus string
-	Recommendation       map[string][]map[string]string
+	Recommendation       map[string][]map[string][]ListRecommendations
 }

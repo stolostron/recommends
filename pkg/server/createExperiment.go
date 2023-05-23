@@ -166,18 +166,18 @@ func SaveRecommendationData(containerMapObject map[string][]string, req *Request
 	recommendationItem.Namespace = reqParts[2]
 	recommendationItem.RecommendationID = reqParts[3]
 
-	deployments := make(map[string][]map[string]string)
+	deployments := make(map[string][]map[string][]ListRecommendations)
 
 	for deployment, containers := range containerMapObject {
-		containerRecommendations := make([]map[string]string, 0) //ex: [{cont1:rec1}, {con2:rec2},..]
+		containerRecommendations := make([]map[string][]ListRecommendations, 0) //ex: [{cont1:rec1}, {con2:rec2},..]
 		for _, container := range containers {
-			containerRecommendation := map[string]string{
-				container: "recommendation-status",
+			containerRecommendation := map[string][]ListRecommendations{
+				container: {},
 			}
 			containerRecommendations = append(containerRecommendations, containerRecommendation)
 		}
 
-		deployments = map[string][]map[string]string{
+		deployments = map[string][]map[string][]ListRecommendations{
 			deployment: containerRecommendations,
 		}
 	}
