@@ -128,8 +128,6 @@ func getRecommendations(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 		}
-
-		klog.Info(rec.Recommendation)
 		klog.V(4).Info("Received recommendations")
 
 	}
@@ -141,16 +139,8 @@ func getById(id string) *RecommendationItem {
 	for _, rec := range Recommendationstore.data {
 		if rec.RecommendationID == id {
 			recitem = rec
-			for dep, deplist := range rec.Recommendation {
-				for _, conlist := range deplist {
-					for con := range conlist {
+			buildRequest(rec)
 
-						containerRequestUrl := fmt.Sprint(list_recommendations_url + "?" + "experiment_name=" + "ns_" + rec.Cluster + "_" + rec.Namespace + "_" + id + "-" + dep + "-" + con)
-						requestUrlList = append(requestUrlList, containerRequestUrl)
-
-					}
-				}
-			}
 		}
 	}
 	return recitem
@@ -162,16 +152,7 @@ func getByClusterNamespace(cluster string, namespace string) *RecommendationItem
 	for _, rec := range Recommendationstore.data {
 		if rec.Cluster == cluster && rec.Namespace == namespace {
 			recitem = rec
-			for dep, deplist := range rec.Recommendation {
-				for _, conlist := range deplist {
-					for con := range conlist {
-
-						containerRequestUrl := fmt.Sprint(list_recommendations_url + "?" + "experiment_name=" + "ns_" + rec.Cluster + "_" + rec.Namespace + "_" + rec.RecommendationID + "-" + dep + "-" + con)
-						requestUrlList = append(requestUrlList, containerRequestUrl)
-
-					}
-				}
-			}
+			buildRequest(rec)
 		}
 	}
 	return recitem
@@ -186,4 +167,17 @@ func addRec(rec *RecommendationItem, deploy string, container string, recommenda
 	rec.Recommendation[deploy] = append(rec.Recommendation[deploy], containerMap)
 
 	return rec
+}
+
+func buildRequest(rec *RecommendationItem) {
+	for dep, deplist := range rec.Recommendation {
+		for _, conlist := range deplist {
+			for con := range conlist {
+
+				containerRequestUrl := fmt.Sprint(list_recommendations_url + "?" + "experiment_name=" + "ns_" + rec.Cluster + "_" + rec.Namespace + "_" + rec.RecommendationID + "-" + dep + "-" + con)
+				requestUrlList = append(requestUrlList, containerRequestUrl)
+
+			}
+		}
+	}
 }
