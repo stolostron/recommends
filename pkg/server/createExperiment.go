@@ -51,18 +51,25 @@ type RecommendationSettings struct {
 	Threshold string `json:"threshold"`
 }
 
+type RecommendationStore struct {
+	data []*RecommendationItem
+}
+
+var Recommendationstore RecommendationStore
+
 func processRequest(req *Request) {
 	klog.Infof("Processing Request %s", req.RequestName)
 	var requestBody CreateExperiment
 	var containerDataClean []string
-
 	containerMap := make(map[string][]Container)
+	containerObjectMap := make(map[string][]string)
 
 	//get containers
 	for deployment, containerData := range req.Workloads {
 		containerDataClean = helpers.RemoveDuplicate(containerData)
 		for _, contData := range containerDataClean {
 			containerMap[deployment] = append(containerMap[deployment], Container{ContainerImage: contData, ContainerName: contData})
+			containerObjectMap[deployment] = append(containerObjectMap[deployment], contData)
 		}
 	}
 
@@ -109,9 +116,13 @@ func processRequest(req *Request) {
 				UpdateQueue <- requestBody
 			}
 
+			clusterNamespaceMap := SaveRecommendationData(containerObjectMap, req)
+			Recommendationstore.data = append(Recommendationstore.data, clusterNamespaceMap)
+
 		}
+
 		//Add break here to run one deployment for test
-		//break
+		// break
 	}
 
 	klog.V(5).Infof("Processed %s", req.RequestName)
@@ -133,6 +144,7 @@ func createExperiment(requestBodies []CreateExperiment, context context.Context)
 	} else if res.StatusCode == 201 {
 		return nil
 	}
+
 	return nil
 
 }
@@ -142,4 +154,35 @@ func ProcessCreateQueue(q chan Request) {
 		req := <-q
 		go processRequest(&req)
 	}
+}
+
+func SaveRecommendationData(containerMapObject map[string][]string, req *Request) *RecommendationItem {
+
+	var recommendationItem = RecommendationItem{}
+
+	reqParts := strings.Split(req.RequestName, "_")
+
+	recommendationItem.Cluster = reqParts[1]
+	recommendationItem.Namespace = reqParts[2]
+	recommendationItem.RecommendationID = reqParts[3]
+
+	deployments := make(map[string][]map[string][]ListRecommendations)
+
+	for deployment, containers := range containerMapObject {
+		containerRecommendations := make([]map[string][]ListRecommendations, 0) //ex: [{cont1:rec1}, {con2:rec2},..]
+		for _, container := range containers {
+			containerRecommendation := map[string][]ListRecommendations{
+				container: {},
+			}
+			containerRecommendations = append(containerRecommendations, containerRecommendation)
+		}
+
+		deployments = map[string][]map[string][]ListRecommendations{
+			deployment: containerRecommendations,
+		}
+	}
+
+	recommendationItem.Recommendation = deployments
+	return &recommendationItem
+
 }

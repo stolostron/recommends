@@ -3,9 +3,7 @@ package server
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"io"
 	"net/http"
 
 	"github.com/golang/gddo/httputil/header"
@@ -21,7 +19,7 @@ func init() {
 }
 
 type recommendation []struct {
-	ClusterName         string `json:"clusterName"`
+	ClusterName         string `json:"cluster_name"`
 	Namespace           string `json:"namespace"`
 	Application         string `json:"application"`
 	MeasurementDuration string `json:"measurement_duration"` //ex: "15min"
@@ -57,28 +55,10 @@ func computeRecommendations(w http.ResponseWriter, r *http.Request) {
 	err := dec.Decode(&newRecommendation)
 
 	//error handling for decoding request body:
-	if err != nil {
-		var unmarshalTypeError *json.UnmarshalTypeError
-		var syntaxError *json.SyntaxError
-
-		switch {
-
-		case errors.As(err, &syntaxError):
-			http.Error(w, "{\"message\":\"Request body contains badly-formed JSON.\"}", http.StatusBadRequest)
-
-		case errors.As(err, &unmarshalTypeError):
-			msg := fmt.Sprintf("Request body contains an invalid value for the %s field", unmarshalTypeError.Field)
-			http.Error(w, msg, http.StatusBadRequest)
-
-		case errors.Is(err, io.EOF):
-			http.Error(w, "{\"message\":\"Request body must not be empty.\"}", http.StatusBadRequest)
-
-		default:
-			klog.Error(err.Error())
-			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-		}
+	if ok := helpers.ErrorHandlingRequests(w, err); !ok {
 		return
 	}
+
 	clusterName := newRecommendation[0].ClusterName
 	nameSpace := newRecommendation[0].Namespace
 	appName := newRecommendation[0].Application
