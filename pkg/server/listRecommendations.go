@@ -45,7 +45,7 @@ type aggregation_info struct {
 
 type NewRecommendation struct {
 	Data          map[string]recommendationType `json:"data,omitempty"`
-	Notifications []notification                `json:"notifications,omitempty"`
+	Notifications map[string]notification       `json:"notifications,omitempty"`
 }
 
 type notification struct {

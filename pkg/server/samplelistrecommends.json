@@ -1,0 +1,130 @@
+[
+    {
+      "version": "1.0",
+      "experiment_id": "d48f93781d11ecf302acf191d454c4f935c779d9bba0cd0ea9441149717868fa",
+      "experiment_name": "ns_local-cluster_open-cluster-management-observability_00397864-observability-thanos-receive-controller-thanos-receive-controller",
+      "cluster_name": "local-cluster",
+      "mode": "monitor",
+      "target_cluster": "remote",
+      "status": "IN_PROGRESS",
+      "performance_profile": "resource-optimization-local-monitoring",
+      "trial_settings": {
+        "measurement_duration": "60min"
+      },
+      "recommendation_settings": {
+        "threshold": "0.1"
+      },
+      "experiment_usecase_type": {
+        "remote_monitoring": true,
+        "local_monitoring": false,
+        "local_experiment": false
+      },
+      "validation_data": {
+        "success": true,
+        "message": "Registered successfully with Kruize! View registered experiments at /listExperiments",
+        "errorCode": 201
+      },
+      "kubernetes_objects": [
+        {
+          "type": "deployment",
+          "name": "observability-thanos-receive-controller",
+          "namespace": "open-cluster-management-observability",
+          "containers": {
+            "thanos-receive-controller": {
+              "container_image_name": "thanos-receive-controller",
+              "container_name": "thanos-receive-controller",
+              "recommendations": {
+                "notifications": {
+                  "112101": {
+                    "type": "info",
+                    "message": "Duration Based Recommendations Available",
+                    "code": 112101
+                  }
+                },
+                "data": {
+                  "2023-05-31T18:23:43.704Z": {
+                    "duration_based": {
+                      "short_term": {
+                        "monitoring_start_time": "2023-05-30T18:23:43.704Z",
+                        "monitoring_end_time": "2023-05-31T18:23:43.704Z",
+                        "duration_in_hours": 24.0,
+                        "pods_count": 1,
+                        "confidence_level": 0.0,
+                        "config": {
+                          "limits": {
+                            "cpu": {
+                              "amount": 0.5251212999998719,
+                              "format": "cores"
+                            },
+                            "memory": {
+                              "amount": 47.8890625,
+                              "format": "MiB"
+                            }
+                          },
+                          "requests": {
+                            "cpu": {
+                              "amount": 0.5251212999998719,
+                              "format": "cores"
+                            },
+                            "memory": {
+                              "amount": 47.8890625,
+                              "format": "MiB"
+                            }
+                          }
+                        },
+                        "variation": {
+                          "limits": {
+                            "cpu": {
+                              "amount": 0.5251212999998719,
+                              "format": "cores"
+                            },
+                            "memory": {
+                              "amount": 47.8890625,
+                              "format": "MiB"
+                            }
+                          },
+                          "requests": {
+                            "cpu": {
+                              "amount": -1.6777216001474878E10,
+                              "format": "cores"
+                            },
+                            "memory": {
+                              "amount": 15.889062500000001,
+                              "format": "MiB"
+                            }
+                          }
+                        },
+                        "notifications": {}
+                      },
+                      "medium_term": {
+                        "pods_count": 0,
+                        "confidence_level": 0.0,
+                        "notifications": {
+                          "120001": {
+                            "type": "info",
+                            "message": "There is not enough data available to generate a recommendation.",
+                            "code": 120001
+                          }
+                        }
+                      },
+                      "long_term": {
+                        "pods_count": 0,
+                        "confidence_level": 0.0,
+                        "notifications": {
+                          "120001": {
+                            "type": "info",
+                            "message": "There is not enough data available to generate a recommendation.",
+                            "code": 120001
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  ]

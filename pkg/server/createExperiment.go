@@ -69,12 +69,13 @@ func processRequest(req *Request) {
 		containerDataClean = helpers.RemoveDuplicate(containerData)
 		for _, contData := range containerDataClean {
 			containerMap[deployment] = append(containerMap[deployment], Container{ContainerImage: contData, ContainerName: contData})
-			containerObjectMap[deployment] = append(containerObjectMap[deployment], contData)
+
 		}
 	}
 
 	for deployment, containers := range containerMap {
 		for _, con := range containers {
+			containerObjectMap[deployment] = append(containerObjectMap[deployment], con.ContainerImage)
 			singleContainer := []Container{con}
 			experimentName := fmt.Sprintf("%s-%s-%s", req.RequestName, deployment, con.ContainerName)
 			clusterName := strings.Split(req.RequestName, "_")[1]
@@ -83,7 +84,7 @@ func processRequest(req *Request) {
 				Version:            "1.0",
 				ExperimentName:     experimentName,
 				ClusterName:        clusterName,
-				PerformanceProfile: "resource-optimization-acm",
+				PerformanceProfile: "resource-optimization-local-monitoring",
 				Mode:               "monitor",
 				TargetCluster:      "remote",
 				KubernetesObjects: []KubernetesObject{
@@ -123,6 +124,7 @@ func processRequest(req *Request) {
 
 		//Add break here to run one deployment for test
 		// break
+
 	}
 
 	klog.V(5).Infof("Processed %s", req.RequestName)

@@ -1,5 +1,5 @@
 {
-    "name": "resource-optimization-acm",
+    "name": "resource-optimization-local-monitoring",
     "profile_version": 1,
     "k8s_type": "openshift",
     "slo": {
