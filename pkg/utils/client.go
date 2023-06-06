@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"crypto/tls"
 	"net/http"
 
 	promApi "github.com/prometheus/client_golang/api"
@@ -12,15 +11,9 @@ import (
 var PromClient promApi.Client
 
 func HTTPClient() http.Client {
-	// Create a transport configuration with TLS (HTTPS) settings
-	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: false,
-		},
-	}
-	c := http.Client{
-		Transport: tr,
-	}
+
+	c := http.Client{}
+
 	return c
 }
 
