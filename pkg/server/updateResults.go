@@ -41,6 +41,7 @@ func ProcessUpdateQueue(q chan CreateExperiment) {
 //updateresults per each experiment
 func updateResultRequest(ce *CreateExperiment) {
 
+	metricsSent := make(map[string][]model.Metrics)
 	var updateResult UpdateResults
 	var updateResults []UpdateResults
 
@@ -60,6 +61,8 @@ func updateResultRequest(ce *CreateExperiment) {
 				// get queries from performanceProfile per container:
 				metricsList := pm.GetPerformanceProfileInstanceMetrics(ce.ClusterName, kubeobj.Namespace,
 					kubeobj.Name, contlist.ContainerName, ce.TrialSettings.MeasurementDuration, unixTime)
+
+				metricsSent[contlist.ContainerName] = metricsList
 
 				updateResult = UpdateResults{
 					Version:        ce.Version,
@@ -102,6 +105,8 @@ func updateResultRequest(ce *CreateExperiment) {
 		}
 
 	}
+
+	klog.Info("Container metrics map:", metricsSent)
 }
 func postUpdateResult(updateResults []UpdateResults) error {
 	//post updateResults request to kruize
@@ -128,7 +133,7 @@ func postUpdateResult(updateResults []UpdateResults) error {
 func getTimeWindows(days int, windowSize int) []time.Time {
 	var windows []time.Time
 	currentTime := time.Now()                  // To Do : we should get the time from the input
-	startTime := currentTime.AddDate(0, 0, -1) // Goback to one day
+	startTime := currentTime.AddDate(0, 0, -5) // Go back to five days
 	startTime = startTime.Add(-time.Hour * 2)  // Kruize needs 24 + 2 data points
 	windows = append(windows, startTime)
 
