@@ -33,7 +33,6 @@ func GetLabels(clusterName string, namespace string) (map[string][]string, error
 	if err != nil {
 		return nil, fmt.Errorf("Error creating client: %v. Please ensure that the API server is running and the address is correct", err)
 	}
-
 	v1api := promv1.NewAPI(client)
 	clusterFilter := `cluster="` + clusterName + `"`
 	namespaceFilter := `namespace="` + namespace + `"`

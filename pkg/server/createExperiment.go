@@ -74,6 +74,7 @@ func processRequest(req *Request) {
 	}
 
 	for deployment, containers := range containerMap {
+
 		for _, con := range containers {
 			containerObjectMap[deployment] = append(containerObjectMap[deployment], con.ContainerImage)
 			singleContainer := []Container{con}
@@ -96,7 +97,7 @@ func processRequest(req *Request) {
 					},
 				},
 				TrialSettings: TrialSettings{
-					MeasurementDuration: "60min",
+					MeasurementDuration: "15min",
 				},
 				RecommendationSettings: RecommendationSettings{
 					Threshold: "0.1",
@@ -121,10 +122,8 @@ func processRequest(req *Request) {
 			Recommendationstore.data = append(Recommendationstore.data, clusterNamespaceMap)
 
 		}
-
 		//Add break here to run one deployment for test
-		// break
-
+		//break
 	}
 
 	klog.V(5).Infof("Processed %s", req.RequestName)

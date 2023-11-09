@@ -39,7 +39,7 @@ func InitPerformanceProfile() bool {
 		return false
 	}
 	klog.V(2).Infof("Kruize response message : %v", data["message"])
-	if data["message"] == "Validation failed: Performance Profile already exists: resource-optimization-acm" {
+	if data["message"] == "Validation failed: Performance Profile already exists: resource-optimization-local-monitoring" {
 		klog.Infof("PerformanceProfile already exists")
 		return true
 	}
