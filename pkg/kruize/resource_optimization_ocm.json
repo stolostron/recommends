@@ -17,11 +17,11 @@
                 "aggregation_functions": [
                     {
                         "function": "avg",
-                        "query": "avg(kube_pod_container_resource_requests{cluster=\"$CLUSTER_NAME$\",namespace=\"$NAMESPACE$\",pod=~\"$WORKLOAD_NAME$-[^-]*-[^-]*\",container=\"$CONTAINER_NAME$\"}@$UNIX_TIME$)"
+                        "query": "avg(kube_pod_container_resource_requests{cluster=\"$CLUSTER_NAME$\",namespace=\"$NAMESPACE$\",pod=~\"$WORKLOAD_NAME$-[^-]*-[^-]*\",resource=\"cpu\",container=\"$CONTAINER_NAME$\"}@$UNIX_TIME$)"
                     },
                     {
                         "function": "sum",
-                        "query": "sum(kube_pod_container_resource_requests{cluster=\"$CLUSTER_NAME$\",namespace=\"$NAMESPACE$\",pod=~\"$WORKLOAD_NAME$-[^-]*-[^-]*\",container=\"$CONTAINER_NAME$\"}@$UNIX_TIME$)"
+                        "query": "sum(kube_pod_container_resource_requests{cluster=\"$CLUSTER_NAME$\",namespace=\"$NAMESPACE$\",pod=~\"$WORKLOAD_NAME$-[^-]*-[^-]*\",resource=\"cpu\",container=\"$CONTAINER_NAME$\"}@$UNIX_TIME$)"
                     }
                 ]
             },
@@ -33,11 +33,11 @@
                 "aggregation_functions": [
                     {
                         "function": "avg",
-                        "query": "avg(kube_pod_container_resource_limits{cluster=\"$CLUSTER_NAME$\",namespace=\"$NAMESPACE$\",pod=~\"$WORKLOAD_NAME$-[^-]*-[^-]*\",container=\"$CONTAINER_NAME$\"}@$UNIX_TIME$)"
+                        "query": "avg(kube_pod_container_resource_limits{cluster=\"$CLUSTER_NAME$\",namespace=\"$NAMESPACE$\",resource=\"cpu\",pod=~\"$WORKLOAD_NAME$-[^-]*-[^-]*\",container=\"$CONTAINER_NAME$\"}@$UNIX_TIME$)"
                     },
                     {
                         "function": "sum",
-                        "query": "sum(kube_pod_container_resource_limits{cluster=\"$CLUSTER_NAME$\",namespace=\"$NAMESPACE$\",pod=~\"$WORKLOAD_NAME$-[^-]*-[^-]*\",container=\"$CONTAINER_NAME$\"}@$UNIX_TIME$)"
+                        "query": "sum(kube_pod_container_resource_limits{cluster=\"$CLUSTER_NAME$\",namespace=\"$NAMESPACE$\",resource=\"cpu\",pod=~\"$WORKLOAD_NAME$-[^-]*-[^-]*\",container=\"$CONTAINER_NAME$\"}@$UNIX_TIME$)"
                     }
                 ]
             },

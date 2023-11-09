@@ -35,6 +35,5 @@ func getResults(query string) (float64, error) {
 	for _, sample := range vector {
 		value = (float64)(sample.Value)
 	}
-
 	return value, nil
 }

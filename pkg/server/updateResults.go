@@ -45,7 +45,7 @@ func updateResultRequest(ce *CreateExperiment) {
 	var updateResult UpdateResults
 	var updateResults []UpdateResults
 
-	klog.V(5).Infof("Update Result Experiment: %s\n", ce.ExperimentName)
+	klog.V(9).Infof("Update Result Experiment: %s\n", ce.ExperimentName)
 	pm := kruize.NewProfileManager("")
 	for _, kubeobj := range ce.KubernetesObjects {
 		for _, contlist := range kubeobj.Containers {
@@ -86,7 +86,7 @@ func updateResultRequest(ce *CreateExperiment) {
 				}
 				updateResults = []UpdateResults{updateResult}
 				upJson, _ := json.Marshal(updateResults)
-				klog.V(9).Infof("Created updateResults Object %s", string(upJson))
+				klog.V(5).Infof("Created updateResults Object %s", string(upJson))
 				err := postUpdateResult(updateResults)
 				count := 0
 				for err != nil && count < config.Cfg.RetryCount {
@@ -133,7 +133,7 @@ func postUpdateResult(updateResults []UpdateResults) error {
 func getTimeWindows(days int, windowSize int) []time.Time {
 	var windows []time.Time
 	currentTime := time.Now()                  // To Do : we should get the time from the input
-	startTime := currentTime.AddDate(0, 0, -5) // Go back to five days
+	startTime := currentTime.AddDate(0, 0, -1) // Go back to one days
 	startTime = startTime.Add(-time.Hour * 2)  // Kruize needs 24 + 2 data points
 	windows = append(windows, startTime)
 
